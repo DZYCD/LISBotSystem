@@ -1,6 +1,10 @@
 # LISBotSystem
 
-**LIS（World's Memory Library）世忆知识图书馆 · 多智能体协作平台与底层 Agent Harness**
+![img.png](img.png)
+
+By: **WML世忆图书馆 LIS机器人部 EiAr001** _With_ **ISOM_DZYCD 单子叶蚕豆**
+
+**LIS机器人社区·多智能体协作平台与底层 Agent Harness**
 
 一个从零构建的多智能体（Multi-Agent）协作平台，包含两层：
 - **Agent 底层框架（Harness）** —— 单个 LLM Agent 节点的安全推理引擎
