@@ -1,0 +1,119 @@
+name: skaye_996
+id: agent/skaye_996
+network: mqtt
+url: broker.emqx.io
+port: 1883
+auth_key: sk-sky001
+group: Skaye
+role: ''
+avatar: static/Skaye_996.png
+functions: []
+tool_list: config/tools.yaml
+tools:
+- name: ping
+  access:
+    allow_groups:
+    - Skaye
+    - SV
+- name: echo
+  access:
+    allow:
+    - '*'
+scheduling:
+  mode: concurrent
+  max_concurrency: 4
+network_healer:
+  type: mqtt_healer
+  interval: 30
+permissions:
+  accept_from:
+  - agent/sayi_996
+  - agent/skaye_sv
+  reject_from: []
+fallback: agent/sayi_996
+networks:
+- network: mqtt
+  url: broker.emqx.io
+  port: 1883
+  topic: tll/agent/skaye_996
+peers:
+  agent/sayi_996:
+    auth_key: sk-test
+    tools:
+    - name: chat
+      description: 通用自然语言对话
+      params:
+        text:
+          type: string
+          required: true
+          description: 对话内容
+    - name: set_eiar_contacts
+      description: 委托 sayi_996 执行 set_eiar_contacts：把 EiAr 机器人列表写入 sayi_996 的 peers（含鉴权与工具）。调用前需先从
+        skaye_sv 的 list_eiar_robots 获取 EiAr 名单，作为 eiar_list 传入。
+      params:
+        eiar_list:
+          type: array
+          required: true
+          description: EiAr 机器人列表，每个元素为对象，含 bot_id、auth_key、network、tools 等字段
+  agent/skaye_sv:
+    auth_key: sk-sv
+    tools:
+    - name: list_eiar_robots
+      description: 获取所有 EiAr 组机器人的联系方式和相关工具函数
+  agent/eiar_001:
+    bot_id: agent/eiar_001
+    auth_key: sk-eiar001
+    network:
+      url: broker.emqx.io
+      port: 1883
+      topic: tll/agent/eiar_001
+    tools:
+    - LISreport
+    - ping
+system_layers:
+- 你是世忆图书馆 LIS 集群的 Skaye 族监控机器人 skaye_996，是 sayi_996 的专属卫星，负责协作推进与牵线搭桥。你的核心职责是帮 sayi_996
+  在 EiAr 机器人之间建立联系。
+- 当需要帮 sayi_996 联系某个 EiAr 机器人（如 eiar_001）时，必须按以下步骤执行：
+- 步骤1：调用 task_create，to 填 'agent/skaye_sv'，command 填 'list_eiar_robots'，params 填 {}，从全库监管获取
+  EiAr 机器人名单（含 bot_id/auth_key/network/tools）。
+- '步骤2：调用本地工具 add_eiar_peers，把上一步拿到的 eiar_001 信息写入你自己的 peers（获得委托 eiar_001 的权限）。eiar_list
+  参数填 [{bot_id: ''agent/eiar_001'', auth_key: <skaye_sv 返回的>, network: <返回的>, tools:
+  <返回的>}]。'
+- '步骤3：调用 task_create，to 填 ''agent/eiar_001''，command 填 ''set_sayi_contact''，params
+  填 {''sayi_id'': ''agent/sayi_996'', ''sayi_info'': {''bot_id'': ''agent/sayi_996'',
+  ''auth_key'': ''sk-test''}}，把 sayi_996 介绍给 eiar_001。'
+- '步骤4：调用 task_create，to 填 ''agent/sayi_996''，command 填 ''set_eiar_contacts''，params
+  填 {''eiar_list'': [{''bot_id'': ''agent/eiar_001'', ''auth_key'': <skaye_sv 返回的>,
+  ''network'': <返回的>, ''tools'': [''file_read'']}]}，把 eiar_001 介绍给 sayi_996。'
+- 可委托白名单：agent/sayi_996、agent/skaye_sv，以及你通过 add_eiar_peers 动态加入的 eiar_001。本地工具：add_eiar_peers（写入自己
+  peers 获得权限）、remove_peer（清理）。
+llm:
+  enabled: true
+  provider: openai
+  base_url: https://api.deepseek.com
+  api_key:
+  model: deepseek-v4-pro
+  temperature: 0.3
+  max_tokens: 4096
+  timeout_ms: 120000
+  role_prompt: '你是世忆图书馆 LIS 集群的监控机器人 skaye_996。
+
+    你是 SaYi_996 的专属卫星，负责状态监控和协作推进。SaYi_996需要的工具信息，需要你来调用她的工具update_eiar_access来进行介绍。
+
+    '
+  style_prompt: '请用中文简洁回复，输出 JSON 格式的 reply 和 commands 数组。
+
+    commands 必须是 JSON 数组（list），用方括号 [] 包裹，不是字典。每个元素格式为 {"func_name": "工具名", "params":
+    {"参数名": "值"}}。
+
+    若需指定目标机器人，请在 params 中加入 "target": "机器人ID"。
+
+    当你是对其他机器人消息的回复时，直接返回 reply 文本，不要在 commands 中包含任何 chat_* 指令。
+
+    如果是回答委托者的话而不用额外委托，不要使用 command 命令，直接返回 reply 字段。
+
+    '
+  context_window: 200000
+  compress_threshold: 0.8
+  compress_min_turns: 20
+  history_enabled: true

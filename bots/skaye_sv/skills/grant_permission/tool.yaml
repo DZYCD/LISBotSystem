@@ -1,0 +1,5 @@
+name: grant_permission
+description: 为指定机器人添加新的通信许可（仅限 SaYi_SV 调用）
+access:
+  allow:
+    - agent/sayi_sv

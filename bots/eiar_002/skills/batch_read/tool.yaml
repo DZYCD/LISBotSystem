@@ -1,0 +1,2 @@
+name: batch_read
+description: 批量读取目录下所有DOCX文件

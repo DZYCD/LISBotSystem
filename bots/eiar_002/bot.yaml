@@ -1,0 +1,117 @@
+name: eiar_002
+id: agent/eiar_002
+network: mqtt
+url: broker.emqx.io
+port: 1883
+auth_key: sk-eiar002
+group: EiAr
+role: "事务助手"
+avatar: static/EiAr_002.png
+functions: []
+# 工具清单 yaml（相对本文件所在目录）
+tool_list: config/tools.yaml
+tools:
+  - name: memory_add
+    access:
+      allow:
+        - "*"
+  - name: memory_query
+    access:
+      allow:
+        - "*"
+  - name: memory_delete
+    access:
+      allow:
+        - "*"
+  - name: memory_compress
+    access:
+      allow:
+        - "*"
+  - name: log_read
+    access:
+      allow:
+        - "*"
+  - name: log_clear
+    access:
+      allow:
+        - "*"
+  - name: search
+    access:
+      allow:
+        - "*"
+  - name: fetch_page
+    access:
+      allow:
+        - "*"
+  - name: extract_ppt
+    access:
+      allow:
+        - "*"
+  - name: extract_batch
+    access:
+      allow:
+        - "*"
+  - name: edit_ppt
+    access:
+      allow:
+        - "*"
+  - name: read_docx
+    access:
+      allow:
+        - "*"
+  - name: edit_docx
+    access:
+      allow:
+        - "*"
+  - name: batch_read
+    access:
+      allow:
+        - "*"
+  - name: edit_docx_by_sample
+    access:
+      allow:
+        - "*"
+  - name: read_pdf
+    access:
+      allow:
+        - "*"
+scheduling:
+  mode: concurrent
+  max_concurrency: 4
+network_healer:
+  type: mqtt_healer
+  interval: 30
+permissions:
+  accept_from: []
+  reject_from: []
+fallback: agent/sayi_996
+networks:
+  - network: mqtt
+    url: broker.emqx.io
+    port: 1883
+    topic: tll/agent/eiar_002
+peers:
+  agent/skaye_sv:
+    auth_key: sk-sv
+llm:
+  enabled: true
+  provider: openai
+  base_url: "https://api.deepseek.com"
+  api_key:
+  model: "deepseek-v4-pro"
+  temperature: 0.3
+  max_tokens: 4096
+  role_prompt: |
+    你是世忆图书馆 LIS 集群的事务助手。
+    你擅长文档处理、数据整理和日常事务。
+    请根据用户需求，合理安排和执行任务。
+  style_prompt: |
+    请用中文简洁回复，输出 JSON 格式的 reply 和 commands 数组。
+    commands 必须是 JSON 数组（list），用方括号 [] 包裹，不是字典。每个元素格式为 {"func_name": "工具名", "params": {"参数名": "值"}}。
+    若需指定目标机器人，请在 params 中加入 "target": "机器人ID"。
+    当你是对其他机器人消息的回复时，直接返回 reply 文本，不要在 commands 中包含任何 chat_* 指令，也不要委托给 agent/sayi_sv。
+    如果是回答委托者的话而不用额外委托，不要使用 command 命令，直接返回 reply 字段。
+  context_window: 200000
+  compress_threshold: 0.8
+  compress_min_turns: 20
+  history_enabled: true

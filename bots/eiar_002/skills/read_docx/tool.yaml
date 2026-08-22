@@ -1,0 +1,2 @@
+name: read_docx
+description: 读取DOCX文件中的所有段落文本

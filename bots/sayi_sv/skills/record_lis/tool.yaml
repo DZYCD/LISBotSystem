@@ -1,0 +1,2 @@
+name: record_lis
+description: 接收机器人启动上报的通讯信息，登记到监控列表

@@ -1,0 +1,2 @@
+name: echo
+description: 回显收到的消息，用于测试和调试

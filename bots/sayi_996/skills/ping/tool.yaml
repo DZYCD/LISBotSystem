@@ -1,0 +1,2 @@
+name: ping
+description: 回复 PONG，用于测试 TLL 协议连通性

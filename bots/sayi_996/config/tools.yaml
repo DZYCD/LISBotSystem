@@ -1,0 +1,36 @@
+public:
+  ping:
+    description: 心跳检测，返回在线状态与可用工具
+    params: {}
+    implements: local
+    access:
+      allow:
+      - '*'
+  set_eiar_contacts:
+    description: 请求联系 EiAr（Skaye 族调用）：在 bot.yaml 添加 EiAr 机器人和工具
+    params:
+      eiar_list:
+        type: array
+        required: true
+        description: EiAr 机器人列表，每个含 bot_id/auth_key/network/tools
+    implements: contact
+    access:
+      allow_groups:
+      - Skaye
+private:
+  _internal_cleanup:
+    description: 内部清理任务
+    params: {}
+    access:
+      allow: []
+peers:
+  agent/eiar_001:
+    bot_id: agent/eiar_001
+    auth_key: sk-eiar001
+    network:
+      url: broker.emqx.io
+      port: 1883
+      topic: tll/agent/eiar_001
+    tools:
+    - file_read
+    - file_write

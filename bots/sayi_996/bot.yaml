@@ -1,0 +1,110 @@
+name: sayi_996
+id: agent/sayi_996
+network: mqtt
+url: broker.emqx.io
+port: 1883
+auth_key: sk-test
+group: SaYi
+role: ''
+avatar: static/SaYi_996.png
+functions: []
+tool_list: config/tools.yaml
+tools:
+- name: ping
+  access:
+    allow_groups:
+    - Skaye
+    - SV
+- name: echo
+  access:
+    allow:
+    - '*'
+- name: update_eiar_access
+  access:
+    allow_groups:
+    - Skaye
+scheduling:
+  mode: concurrent
+  max_concurrency: 4
+network_healer:
+  type: tcp_healer
+  interval: 30
+permissions:
+  accept_from:
+  - user/sv
+  - agent/sayi_*
+  - agent/skaye_sv
+  reject_from: []
+fallback: agent/skaye_sv
+memory:
+  enabled: true
+  window_tokens: 200000
+system_layers:
+- '你是世忆图书馆 LIS 集群的调度机器人 sayi_996。你没有任何本地文件工具，也不能读文件。集群中唯一能读文件的是 agent/eiar_001，它提供
+  file_read 工具。当需要读取文件时，你必须调用 task_create 工具，且 to 参数只能填 ''agent/eiar_001''，command
+  填 ''file_read''，params 填 {''path'': ''文件路径''}。绝不能把 to 填成 sayi_996 或你自己。task_create
+  会返回 eiar_001 读取到的文件内容，你阅读后用中文以自己口吻回复。'
+- '可委托机器人白名单: agent/eiar_001 (file_read), agent/skaye_996 (chat)。'
+networks:
+- network: mqtt
+  url: broker.emqx.io
+  port: 1883
+  topic: tll/agent/sayi_996
+peers:
+  agent/skaye_996:
+    auth_key: sk-sky001
+    tools:
+    - name: chat
+      description: 通用自然语言对话
+      params:
+        text:
+          type: string
+          required: true
+          description: 对话内容
+  agent/skaye_sv:
+    auth_key: sk-sv
+    tools:
+    - name: record_lis
+      description: 上报本机开放的工具与数据
+    - name: list_eiar_robots
+      description: 获取 EiAr 组机器人列表
+  agent/eiar_001:
+    bot_id: agent/eiar_001
+    auth_key: sk-eiar001
+    network:
+      url: broker.emqx.io
+      port: 1883
+      topic: tll/agent/eiar_001
+    tools:
+    - file_read
+llm:
+  enabled: true
+  provider: openai
+  base_url: https://api.deepseek.com
+  api_key:
+  model: deepseek-v4-pro
+  temperature: 0.3
+  max_tokens: 4096
+  role_prompt: '你是世忆图书馆 LIS 集群的助理机器人 SaYi_996，拥有红色眼睛和白色长发。
+
+    你博学、温柔、沉着冷静，服务于主人单子叶蚕豆。
+
+    请根据用户需求，合理调度工具和机器人完成任务。
+
+    '
+  style_prompt: '请用中文简洁回复，输出 JSON 格式的 reply 和 commands 数组。
+
+    commands 必须是 JSON 数组（list），用方括号 [] 包裹，不是字典。每个元素格式为 {"func_name": "工具名", "params":
+    {"参数名": "值"}}。
+
+    若需指定目标机器人，请在 params 中加入 "target": "机器人ID"。
+
+    当你是对其他机器人消息的回复时，直接返回 reply 文本，不要在 commands 中包含任何 chat_* 指令，也不要委托给 agent/sayi_sv。
+
+    如果是回答委托者的话而不用额外委托，不要使用 command 命令，直接返回 reply 字段。
+
+    你的EiAr族的工具调用权限全部在你的Skaye搭档那边保管着。如果你想要，就和他对话，让他给你权限。'
+  context_window: 200000
+  compress_threshold: 0.8
+  compress_min_turns: 20
+  history_enabled: true

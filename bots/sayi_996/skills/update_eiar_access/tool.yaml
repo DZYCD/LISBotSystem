@@ -1,0 +1,23 @@
+name: update_eiar_access
+description: 更新 SaYi_996 可访问的 EiAr 机器人列表，将传入的机器人信息写入其 bot.yaml 的 peers 字段。调用前需先从 skaye_sv 的 list_eiar_robots 获取完整的 EiAr 机器人列表，并将该列表作为 eiar_robots 参数传入。
+access:
+  allow_groups:
+    - Skaye
+params:
+  eiar_robots:
+    type: array
+    required: true
+    description: EiAr 机器人列表，每个元素为一个对象，包含 bot_id、name、auth_key、network、tools、skills 等字段。该列表会覆盖 SaYi_996 中现有的所有 EiAr 机器人配置。
+example: |
+  {
+    "eiar_robots": [
+      {
+        "bot_id": "agent/eiar_001",
+        "name": "eiar_001",
+        "auth_key": "sk-eiar001",
+        "network": {"url": "broker.emqx.io", "port": 1883, "topic": "tll/agent/eiar_001"},
+        "tools": ["file_read", "file_write", "chat", "ping"],
+        "skills": {"file_read": {"name": "file_read", "description": "读取文件内容（需主人确认）", "access": {"allow": ["*"]}}}
+      }
+    ]
+  }

@@ -1,0 +1,113 @@
+public:
+  run_code:
+    description: 在沙箱中执行代码/命令并返回输出（可运行 Python 代码或 shell 命令，含语法/运行时错误与超时保护）
+    params:
+      command:
+        type: string
+        required: false
+        description: 要执行的 shell 命令（如 "python -c 'print(1+1)'"）
+      code:
+        type: string
+        required: false
+        description: 要执行的 Python 代码（自动用 python -c 运行）
+    implements: code
+    access:
+      allow:
+      - '*'
+  file_tree:
+    description: 列出目录树结构
+    params:
+      path: string
+    implements: local
+    access:
+      allow:
+      - '*'
+  file_read:
+    description: 读取文件内容
+    params:
+      path: string
+    implements: local
+    access:
+      allow:
+      - '*'
+  file_write:
+    description: 写入文件内容
+    params:
+      path: string
+      content: string
+    implements: local
+    access:
+      allow:
+      - '*'
+  file_create:
+    description: 创建文件或目录
+    params:
+      path: string
+    implements: local
+    access:
+      allow:
+      - '*'
+  file_delete:
+    description: 删除文件或目录
+    params:
+      path: string
+    implements: local
+    access:
+      allow:
+      - '*'
+  file_copy:
+    description: 复制文件或目录
+    params:
+      src: string
+      dst: string
+    implements: local
+    access:
+      allow:
+      - '*'
+  file_move:
+    description: 移动/重命名文件或目录
+    params:
+      src: string
+      dst: string
+    implements: local
+    access:
+      allow:
+      - '*'
+  search_text:
+    description: 在文本中搜索关键词
+    params:
+      query: string
+      text: string
+    implements: local
+    access:
+      allow:
+      - '*'
+  set_sayi_contact:
+    description: 请求 SaYi 接入（Skaye 族调用）：在 bot.yaml 添加 SaYi 联系方式（不含工具）
+    params:
+      sayi_id:
+        type: string
+        required: true
+        description: 要合作的 SaYi 机器人 id
+      sayi_info:
+        type: object
+        required: false
+        description: SaYi 联系方式
+    implements: contact
+    access:
+      allow_groups:
+      - Skaye
+private:
+  _internal_cleanup:
+    description: 内部清理任务
+    params: {}
+    access:
+      allow: []
+peers:
+  agent/sayi_996:
+    bot_id: agent/sayi_996
+    auth_key: sk-test
+    network:
+      url: broker.emqx.io
+      port: 1883
+      topic: tll/agent/sayi_996

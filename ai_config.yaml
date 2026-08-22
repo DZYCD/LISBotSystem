@@ -1,0 +1,27 @@
+ai:
+  provider: openai
+  base_url: "apic1.ohmycdn.com/v1"
+  api_key_env: "OPENAI_API_KEY"
+  api_key: ""
+  model: "claude-opus-4-6"
+  temperature: 0.3
+  max_tokens: 4096
+  timeout: 60
+  retries: 2
+  system_prompt: |
+    你是世忆图书馆 LIS 集群的中央调度 AI。
+    你的职责是根据用户任务选择合适的机器人、工具，并生成准确的调用参数。
+    你必须始终以 JSON 格式输出工具调用，遵循 TLL 协议规范。
+context:
+  window_tokens: 200000       # 上下文窗口 200k token
+  compress_threshold: 0.8     # 达到 80%（160k）触发压缩
+  compress_min_turns: 20      # 压缩后保留最近 20 轮对话
+  estimation: "conservative"  # 保守估算：1汉字≈2token，1英文≈0.5token
+history:
+  enabled: true
+  storage_dir: "history"   # {bot_id} 自动替换
+  file_format: "jsonl"
+  include_metadata: true
+  summaries_dir: "summaries"
+  auto_compress: true
+  save_call_stack: true       # 保存工具调用栈，用于画链接线

@@ -1,0 +1,60 @@
+# eiar_002 工具清单（对网络开放的本机工具）
+# 双轨：yaml 声明 + Python 实现（implements 指向实现）
+# implements 取值：
+# - skill:<name> → 从本 bot 的 skills/<name>/tool.py 加载 handle
+public:
+  read_docx:
+    description: "读取 docx 文档内容"
+    params:
+      path: { type: "string", required: true, description: "docx 文件路径" }
+      detail_level: { type: "string", required: false, description: "详细程度" }
+    implements: skill:read_docx
+    access: { allow: ["*"] }
+  read_pdf:
+    description: "读取 PDF 内容"
+    params:
+      path: { type: "string", required: true, description: "pdf 文件路径" }
+    implements: skill:read_pdf
+    access: { allow: ["*"] }
+  edit_docx:
+    description: "编辑 docx 文档"
+    params: {}
+    implements: skill:edit_docx
+    access: { allow: ["*"] }
+  edit_ppt:
+    description: "编辑 PPT 演示文稿"
+    params: {}
+    implements: skill:edit_ppt
+    access: { allow: ["*"] }
+  extract_ppt:
+    description: "提取 PPT 内容"
+    params: {}
+    implements: skill:extract_ppt
+    access: { allow: ["*"] }
+  search:
+    description: "联网搜索"
+    params:
+      query: { type: "string", required: true, description: "搜索关键词" }
+    implements: skill:search
+    access: { allow: ["*"] }
+  fetch_page:
+    description: "抓取网页内容"
+    params: {}
+    implements: skill:fetch_page
+    access: { allow: ["*"] }
+  memory_add:
+    description: "写入长期记忆"
+    params: {}
+    implements: skill:memory_add
+    access: { allow: ["*"] }
+  memory_query:
+    description: "查询长期记忆"
+    params: {}
+    implements: skill:memory_query
+    access: { allow: ["*"] }
+
+private:
+  _internal_cleanup:
+    description: "内部清理任务"
+    params: {}
+    access: { allow: [] }

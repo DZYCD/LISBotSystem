@@ -1,0 +1,70 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+*.egg
+
+# 环境 / 密钥（key 已删除，但禁止任何密钥入库）
+.env
+.env.*
+secrets.md
+*secret*
+*.pem
+*.key
+
+# 测试缓存
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# 运行时数据 / 日志
+debug_logs/
+run_log/
+logs/
+*.log
+tasks/
+task_archive/
+registered_bots.json
+knowledge_base.json
+vector_store.json
+summaries/
+history/
+events/
+
+# 运行时/临时产物
+weather_*.py
+_t_*.py
+_tmp*.py
+hello_*.py
+__pycache__
+
+# 模型缓存（不放仓库）
+models_hf/
+D:/models_hf/
+
+# 虚拟环境
+venv/
+env/
+.venv/
+
+# vendored 外部框架（deepseek-harness 官方仓库克隆，有独立 upstream，不入库）
+bots/eiar_001/skills/deepseek-harness/
+
+# 运行时/测试产物
+tll_protocol_v2/xuzhou_weather.json
+bots/skaye_sv/worldsmemory.json
+img.png
+tools/text
+
+# OS
+Thumbs.db
+.DS_Store

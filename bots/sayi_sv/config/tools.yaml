@@ -1,0 +1,14 @@
+# sayi_sv 工具清单（对网络开放的本机工具）
+# sayi_sv 无 LLM，只负责创建任务。record_lis 用于接收其他机器人的上报。
+public:
+  record_lis:
+    description: "接收其他机器人上报的注册/心跳信息"
+    params: {}
+    implements: skill:record_lis
+    access: { allow: ["*"] }
+
+private:
+  _internal_cleanup:
+    description: "内部清理任务"
+    params: {}
+    access: { allow: [] }

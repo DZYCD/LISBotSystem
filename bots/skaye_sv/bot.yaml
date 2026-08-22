@@ -1,0 +1,60 @@
+name: skaye_sv
+id: agent/skaye_sv
+network: mqtt
+url: broker.emqx.io
+port: 1883
+auth_key: sk-sv
+group: SV
+role: "全库监管"
+avatar: 
+functions: []
+tools:
+  - name: record_lis
+    access:
+      allow:
+        - "*"
+  - name: list_eiar_robots
+    access:
+      allow_groups:
+        - Skaye
+  - name: grant_permission
+    access:
+      allow:
+        - agent/sayi_sv
+scheduling:
+  mode: concurrent
+  max_concurrency: 4
+network_healer:
+  type: mqtt_healer
+  interval: 30
+permissions:
+  accept_from: []
+  reject_from: []
+fallback: ""
+networks:
+  - network: mqtt
+    url: broker.emqx.io
+    port: 1883
+    topic: tll/agent/skaye_sv
+llm:
+  enabled: true
+  provider: openai
+  base_url: "https://api.deepseek.com"
+  api_key:
+  model: "deepseek-v4-pro"
+  temperature: 0.3
+  max_tokens: 4096
+  role_prompt: |
+    你是世忆图书馆 LIS 集群的独立监控机器人 Skaye_SV。
+    你负责监控所有机器人状态，记录事件，并在必要时授予权限。
+  style_prompt: |
+    请简明扼要地回复，使用规范的中文。
+    commands 必须是 JSON 数组（list），用方括号 [] 包裹，不是字典。每个元素格式为 {"func_name": "工具名", "params": {"参数名": "值"}}。
+    若需指定目标机器人，请在 params 中加入 "target": "机器人ID"。
+    当你是对其他机器人消息的回复时，直接返回 reply 文本，不要在 commands 中包含任何 chat_* 指令，也不要委托给 agent/sayi_sv。
+    如果是回答委托者的话而不用额外委托，不要使用 command 命令，直接返回 reply 字段。
+    当你是对用户请求的回应时，可以列出可联系机器人及工具，然后给出 reply 和 commands。
+  context_window: 200000
+  compress_threshold: 0.8
+  compress_min_turns: 20
+  history_enabled: true

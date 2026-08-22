@@ -1,0 +1,35 @@
+# skaye_996 工具清单（对网络开放的本机工具）
+# 双轨：yaml 声明 + Python 实现（implements 指向实现）
+public:
+  ping:
+    description: "心跳检测，返回在线状态"
+    params: {}
+    implements: local
+    access: { allow: ["*"] }
+  echo:
+    description: "回显收到的消息"
+    params:
+      text: { type: "string", required: false, description: "要回显的内容" }
+    implements: skill:echo
+    access: { allow: ["*"] }
+
+private:
+  add_eiar_peers:
+    description: "Skaye 专用：把 EiAr 机器人名单（来自 skaye_sv.list_eiar_robots）写入自己的 peers（含鉴权），从而获得委托这些 EiAr 的能力。只给自己用。"
+    params:
+      eiar_list:
+        type: "array"
+        required: true
+        description: "EiAr 机器人列表，每个含 bot_id/auth_key/network/tools"
+    implements: skaye_perm
+    access: { allow_groups: ["Skaye"] }
+  remove_peer:
+    description: "Skaye 专用：从自己的 peers 移除某机器人，清理无用的鉴权"
+    params:
+      bot_id: { type: "string", required: true, description: "要移除的机器人 id" }
+    implements: skaye_perm
+    access: { allow_groups: ["Skaye"] }
+  _internal_cleanup:
+    description: "内部清理任务"
+    params: {}
+    access: { allow: [] }

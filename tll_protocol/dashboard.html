@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang='zh-CN'>
+<head>
+<meta charset='UTF-8'>
+<title>世忆图书馆 · TLL 监控大屏</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Microsoft YaHei',sans-serif; color:#e2e8f0; overflow:hidden; background:#060913; }
+#stars { position:fixed; width:100%; height:100%; top:0; left:0; z-index:0; background:radial-gradient(ellipse at center,#0b0f1a 0%,#060913 100%); }
+.star { position:absolute; background:white; border-radius:50%; opacity:0.8; }
+header { position:relative; z-index:2; background:rgba(30,41,59,0.8); padding:1.5rem 2rem; display:flex; justify-content:space-between; align-items:center; border-bottom:3px solid #8b5cf6; }
+h1 { font-size:1.5rem; color:#c4b5fd; cursor:pointer; }
+h1:hover { color:#a78bfa; }
+#time { color:#94a3b8; font-size:0.9rem; }
+#map { position:relative; z-index:1; height:calc(100vh - 100px); overflow:hidden; }
+#lines { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1; }
+#empty-tip { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#94a3b8; font-size:1.2rem; }
+.bot-node { position:absolute; display:flex; flex-direction:column; align-items:center; cursor:pointer; transition:transform 0.3s; z-index:3; transform:translate(-50%, -50%); }
+.bot-node .dot { width:12px; height:12px; border-radius:50%; margin-bottom:4px; transition:all 0.3s; }
+.bot-node .node-name { font-size:0.7rem; color:#e2e8f0; text-shadow:0 0 5px rgba(0,0,0,0.8); }
+.bot-node .node-tools { font-size:0.6rem; color:#94a3b8; }
+.bot-node.group-sayi .dot { background:#f8fafc; box-shadow:0 0 8px 2px rgba(255,255,255,0.8); }
+.bot-node.group-skaye .dot { background:#3b82f6; box-shadow:0 0 8px 2px rgba(59,130,246,0.8); }
+.bot-node.group-eiar .dot { background:#ef4444; box-shadow:0 0 8px 2px rgba(239,68,68,0.8); }
+.bot-node.group-other .dot { background:#94a3b8; box-shadow:0 0 8px 2px rgba(148,163,184,0.8); }
+.bot-node:hover { transform:translate(-50%, -50%) scale(1.3); }
+.bot-node.no-click { opacity:0.4; cursor:not-allowed; }
+.bot-node.no-click:hover { transform:translate(-50%, -50%); }
+.bot-node.related .dot { box-shadow:0 0 12px 3px rgba(255,255,255,0.9); border:1px solid rgba(255,255,255,0.5); }
+.bot-node.group-sayi.related .dot { box-shadow:0 0 12px 3px rgba(248,250,252,0.9); }
+.bot-node.group-skaye.related .dot { box-shadow:0 0 12px 3px rgba(59,130,246,0.9); }
+.bot-node.group-eiar.related .dot { box-shadow:0 0 12px 3px rgba(239,68,68,0.9); }
+.bot-node.group-other.related .dot { box-shadow:0 0 12px 3px rgba(148,163,184,0.9); }
+.bot-node.selected .dot { outline:2px solid #8b5cf6; box-shadow:0 0 10px 2px rgba(139,92,246,0.7); }
+#side-panel { position:fixed; top:0; right:-400px; width:400px; height:100%; background:rgba(30,41,59,0.95); transition:right 0.4s ease; z-index:1000; box-shadow:-5px 0 15px rgba(0,0,0,0.3); overflow-y:auto; }
+#side-panel.open { right:0; }
+.side-header { display:flex; justify-content:space-between; padding:1rem; border-bottom:1px solid #334155; position:sticky; top:0; background:rgba(30,41,59,0.95); z-index:10; }
+.side-header h2 { word-break:break-all; padding-right:1rem; }
+.side-header h2 { color:#c4b5fd; }
+.close-btn { background:none; border:none; color:#94a3b8; font-size:1.5rem; cursor:pointer; }
+.side-image { width:100%; text-align:center; padding:1rem; }
+.side-image img { max-width:100%; max-height:300px; border-radius:0.5rem; }
+.side-info { padding:1rem; }
+.side-info h3 { color:#a5b4fc; margin-bottom:0.5rem; }
+.side-info p { color:#cbd5e1; margin-bottom:0.3rem; }
+.side-info .tool-list { list-style:none; }
+.side-info .contact-list { list-style:none; margin-bottom:1rem; }
+.side-info .contact-list li { font-size:0.95rem; text-align:center; padding:0.4rem 0; background:#1e293b; border-radius:0.3rem; margin-bottom:0.3rem; cursor:pointer; transition:background 0.2s; }
+.side-info .contact-list li:hover { background:#334155; }
+.side-info .tool-list li { background:#334155; border-radius:0.3rem; padding:0.3rem 0.5rem; margin-bottom:0.3rem; font-size:0.8rem; }
+#event-panel { position:fixed; left:10px; bottom:10px; width:400px; background:rgba(30,41,59,0.9); border-radius:0.5rem; box-shadow:0 4px 10px rgba(0,0,0,0.3); z-index:500; }
+#event-header { cursor:pointer; padding:0.8rem; border-bottom:1px solid #334155; display:flex; justify-content:space-between; align-items:center; }
+#event-header span { color:#c4b5fd; font-weight:bold; }
+#event-body { max-height:300px; overflow-y:auto; padding:0.5rem; display:block; }
+#event-body.collapsed { display:none; }
+#info-panel { position:fixed; left:10px; bottom:10px; width:320px; max-height:400px; background:rgba(30,41,59,0.95); border-radius:0.5rem; box-shadow:0 4px 10px rgba(0,0,0,0.3); z-index:600; padding:1rem; display:none; overflow-y:auto; }
+#info-panel p { color:#cbd5e1; margin-bottom:0.3rem; font-size:0.85rem; }
+.event { padding:0.4rem 0; border-bottom:1px solid #334155; font-size:0.75rem; }
+.event .time { color:#64748b; margin-right:0.5rem; }
+.event.success { border-left:3px solid #10b981; }
+.event.error { border-left:3px solid #ef4444; }
+.event.error .msg { color:#fca5a5; }
+.event .msg { color:#e2e8f0; }
+.event-group { padding:0.5rem; border-bottom:1px solid #1e293b; cursor:pointer; transition:background 0.2s; }
+.event-group:hover { background:#334155; }
+.event-group-title { font-size:0.75rem; color:#c4b5fd; word-break:break-all; }
+.event-group-meta { font-size:0.65rem; color:#94a3b8; }
+.event-detail-item { padding:0.3rem 0; border-bottom:1px solid #1e293b; }
+.event-detail-time { font-size:0.65rem; color:#64748b; }
+.event-detail-msg { font-size:0.75rem; color:#e2e8f0; word-break:break-all; }
+.task-status { font-size:0.6rem; padding:0.1rem 0.4rem; border-radius:0.3rem; margin-left:0.4rem; vertical-align:middle; }
+.task-status.inprocess { color:#f59e0b; border:1px solid #f59e0b; }
+.task-status.archived { color:#10b981; border:1px solid #10b981; }
+.event-status-change { font-size:0.85rem; color:#3b82f6; font-weight:bold; padding:0.2rem 0; text-align:center; }
+.event-bot-divider { color:#a855f7; text-align:center; font-weight:bold; padding:0.3rem 0; font-size:0.85rem; }
+#chat-record-panel {
+    position:fixed; bottom:70px; left:50%; transform:translateX(-50%); width:640px; max-height:300px; background:rgba(15,23,42,0.95); border:1px solid #334155; border-radius:1rem; padding:0.8rem 1rem; z-index:800; box-shadow:0 4px 15px rgba(0,0,0,0.5); display:none; overflow-y:auto;
+}
+#chat-record-list { max-height:220px; overflow-y:auto; }
+.chat-record-time { font-size:0.65rem; color:#64748b; margin:0 0.3rem; }
+#delegate-chat-bar { position:fixed; bottom:10px; left:50%; transform:translateX(-50%); width:640px; background:rgba(15,23,42,0.95); border:1px solid #334155; border-radius:1rem; padding:0.8rem 1rem; display:none; align-items:center; gap:0.5rem; z-index:800; box-shadow:0 4px 15px rgba(0,0,0,0.5); }
+#delegate-target-hint { color:#c4b5fd; font-size:0.85rem; white-space:nowrap; min-width:120px; overflow:hidden; text-overflow:ellipsis; }
+#delegate-chat-input { flex:1; background:#0f172a; border:1px solid #334155; border-radius:0.5rem; color:#e2e8f0; padding:0.5rem 1rem; font-size:0.9rem; outline:none; }
+#delegate-chat-input:focus { border-color:#8b5cf6; }
+#delegate-send-btn { background:#8b5cf6; border:none; color:white; border-radius:0.5rem; padding:0.5rem 1.2rem; cursor:pointer; font-size:0.9rem; }
+#delegate-send-btn:hover { background:#7c3aed; }
+#task-track-panel { position:fixed; top:0; right:-420px; width:420px; height:100%; background:rgba(15,23,42,0.98); transition:right 0.4s ease; z-index:1100; box-shadow:-5px 0 15px rgba(0,0,0,0.5); display:flex; flex-direction:column; }
+#task-track-panel.open { right:0; }
+.track-header { display:flex; justify-content:space-between; align-items:center; padding:1rem; border-bottom:1px solid #334155; }
+.track-header h3 { color:#c4b5fd; font-size:1rem; }
+#track-status { color:#f59e0b; font-size:0.85rem; }
+.track-body { flex:1; overflow-y:auto; padding:1rem; }
+.task-msg { margin-bottom:0.8rem; padding:0.7rem; background:#1e293b; border-radius:0.6rem; border-left:3px solid #8b5cf6; }
+.task-msg.success { border-left-color:#10b981; }
+.task-msg.error { border-left-color:#ef4444; }
+.task-msg .time { display:block; color:#64748b; font-size:0.7rem; margin-bottom:0.2rem; }
+.task-msg .src { color:#c4b5fd; font-size:0.8rem; font-weight:bold; display:block; margin-bottom:0.2rem; }
+.task-msg p { color:#e2e8f0; font-size:0.85rem; word-break:break-all; }
+</style>
+</head>
+<body>
+<div id='stars'></div>
+<header>
+    <h1 id="mode-title">世忆图书馆 · TLL 监控大屏</h1>
+    <span id='time'></span>
+</header>
+<div id='map'>
+    <canvas id='lines'></canvas>
+    <div id='empty-tip'>暂无机器人注册</div>
+</div>
+<div id='side-panel'>
+    <div class='side-header'>
+        <h2 id='side-name'></h2>
+        <button class='close-btn' onclick='closePanel()'>&times;</button>
+    </div>
+    <div class='side-image'><img id='side-img' src='' alt='立绘'></div>
+    <div class='side-info' id='side-info'></div>
+</div>
+<div id='info-panel'><div id='info-panel-content'></div></div>
+<div id='event-panel'>
+    <div id='event-header' onclick='toggleEvent()'><span>实时事件</span><span style='color:#94a3b8;'>折叠</span></div>
+    <div id='event-body'>加载中...</div>
+</div>
+<div id='chat-record-panel'>
+    <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;'>
+        <span style='color:#c4b5fd;font-weight:bold;'>对话记录</span>
+        <span style='color:#94a3b8;font-size:0.75rem;' id='chat-record-count'>0</span>
+    </div>
+    <div id='chat-record-list'></div>
+</div>
+<div id='delegate-chat-bar'>
+    <span id='delegate-target-hint'>请先选择目标</span>
+    <input id='delegate-chat-input' type='text' placeholder='输入消息...'>
+    <button id='delegate-send-btn'>发送</button>
+</div>
+<div id='task-track-panel'>
+    <div class='track-header'>
+        <h3>任务追踪 <span style='font-size:0.7rem;color:#94a3b8;' id='track-task-id'>(无)</span></h3>
+        <div style='display:flex;align-items:center;gap:1rem;'>
+            <span id='track-status'>未开始</span>
+            <button class='close-btn' id='task-track-close'>&times;</button>
+        </div>
+    </div>
+    <div class='track-body' id='task-track-list'></div>
+</div>
+<script>
+function shouldShowAvatar(botId) {
+    return botId && !/sv$/i.test(botId);
+}
+
+
+
+function initDelegateMode() {
+    document.getElementById('mode-title').onclick = function() {
+        delegateMode = !delegateMode;
+        if (delegateMode) {
+            this.textContent = '世忆图书馆 · TLL 委托模式';
+            document.getElementById('delegate-chat-bar').style.display = 'flex';
+            document.getElementById('chat-record-panel').style.display = 'block';
+            if (!chatRecords.length) loadChatRecords();
+        } else {
+            this.textContent = '世忆图书馆 · TLL 监控大屏';
+            document.getElementById('delegate-chat-bar').style.display = 'none';
+            document.getElementById('chat-record-panel').style.display = 'none';
+            closeTaskTrack();
+        }
+    };
+
+    document.getElementById('delegate-send-btn').onclick = sendDelegateChat;
+    document.getElementById('delegate-chat-input').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') sendDelegateChat();
+    });
+    document.getElementById('task-track-close').onclick = closeTaskTrack;
+}
+
+function sendDelegateChat() {
+    if (!selectedBotId) {
+        alert('请先点击地图上的机器人节点选择目标！');
+        return;
+    }
+    const text = document.getElementById('delegate-chat-input').value.trim();
+    if (!text) return;
+    document.getElementById('delegate-chat-input').value = '';
+    document.getElementById('delegate-target-hint').textContent = '发送给: ' + selectedBotId;
+    showTaskGroupDetails('PENDING', []);
+    fetch('/api/chat?target=' + encodeURIComponent(selectedBotId) + '&text=' + encodeURIComponent(text))
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'sent') {
+                currentTaskId = data.task_id;
+                taskFlows = [{from:'agent/sayi_sv', to:selectedBotId, type:'delegated'}];
+                showTaskGroupDetails(currentTaskId, []);
+                updateEvents();
+            } else {
+                alert('发送失败: ' + (data.info || JSON.stringify(data)));
+            }
+        })
+        .catch(err => alert('网络错误: ' + err));
+}
+
+function openTaskTrack() {
+    document.getElementById('task-track-panel').classList.add('open');
+}
+
+function closeTaskTrack() {
+    document.getElementById('task-track-panel').classList.remove('open');
+    currentTaskId = null;
+    taskFlows = [];
+    document.getElementById('track-task-id').textContent = '(无)';
+    document.getElementById('track-status').textContent = '未开始';
+    document.getElementById('task-track-list').innerHTML = '';
+    if (taskPollTimer) { clearTimeout(taskPollTimer); taskPollTimer = null; }
+    activeTaskFlows = null;
+    drawLines();
+}
+
+function appendTaskMsg(src, title, content) {
+    const list = document.getElementById('task-track-list');
+    const div = document.createElement('div');
+    div.className = 'task-msg';
+    const time = new Date().toLocaleTimeString();
+    div.innerHTML = '<span class="time">' + time + '</span><span class="src">[' + src + '] ' + (title || '') + '</span><p>' + (content || '') + '</p>';
+    list.appendChild(div);
+    list.scrollTop = list.scrollHeight;
+}
+
+function startTaskPolling() {
+    if (taskPollTimer) clearTimeout(taskPollTimer);
+    pollTaskResult();
+}
+
+function pollTaskResult() {
+    if (!currentTaskId) return;
+    fetch('/api/task_result?task_id=' + encodeURIComponent(currentTaskId))
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'found') {
+                const t = data.task;
+                appendTaskMsg(t.target, t.status, (t.reply || t.result || t.output || t.error || '无结果') + '');
+                if (t.status === 'SUCCESS' || t.status === 'FAILED') {
+                    document.getElementById('track-status').textContent = t.status === 'SUCCESS' ? '已完成 ✔' : '失败 ✘';
+                    // 回传连线
+                    taskFlows.push({from: t.target, to: 'agent/sayi_sv', type: 'returned'});
+                    activeTaskFlows = taskFlows;
+                    drawLines();
+                    return; // 不再轮询
+                } else {
+                    // 委托连线已在发送时添加，这里避免重复
+                    activeTaskFlows = taskFlows;
+                    drawLines();
+                }
+            }
+            taskPollTimer = setTimeout(pollTaskResult, 1000);
+        })
+        .catch(err => {
+            appendTaskMsg('system', '轮询错误', err);
+            taskPollTimer = setTimeout(pollTaskResult, 2000);
+        });
+}
+
+function generateStars() {
+    const container = document.getElementById('stars');
+    for (let i = 0; i < 200; i++) {
+        const star = document.createElement('div');
+        star.className = 'star';
+        star.style.left = Math.random()*100 + '%';
+        star.style.top = Math.random()*100 + '%';
+        star.style.width = (Math.random()*2 + 1) + 'px';
+        star.style.height = star.style.width;
+        container.appendChild(star);
+    }
+}
+const toolParams = {
+    chat: '无特殊参数',
+    echo: 'text: 要回显的消息',
+    ping: '无参数',
+    file_tree: 'path: 目录路径',
+    file_read: 'path: 文件路径, start?起始行, end?结束行',
+    file_write: 'path: 路径, mode: overwrite/insert/replace/delete/diff, content: 内容, start/end/line: 行号',
+    file_create: 'path: 路径, type: file/dir',
+    file_delete: 'path: 路径',
+    file_copy: 'src: 源, dst: 目标',
+    file_move: 'src: 源, dst: 目标',
+    search_text: 'path: 文件路径, keyword: 关键词',
+    memory_add: '知识点: 内容, 触发词: [词], 来源: 对话/推理/主人告知',
+    memory_query: '关键词: 查询词',
+    memory_delete: '关键词: 删除词',
+    memory_compress: '无参数',
+    log_read: 'lines: 读取行数',
+    log_clear: '无参数',
+    search: 'query: 搜索词, count?: 数量',
+    fetch_page: 'url: 地址, max_length?: 最大字符数',
+    extract_ppt: 'path: PPTX路径',
+    extract_batch: 'directory: 目录, recursive?: 是否递归',
+    edit_ppt: 'path: 文件路径, action: replace_text/add_slide, old_text?, new_text?, case_sensitive?, replacements?, ...',
+    read_docx: 'path: 文件路径, paragraphs?: 段落数组, detail_level?: paragraph/run',
+    edit_docx: 'path: 文件路径, action: replace_text/add_paragraph, old_text?, new_text?, text?',
+    batch_read: 'directory: 目录, recursive?: 是否递归',
+    read_pdf: 'path: PDF路径',
+    edit_docx_by_sample: 'path: 文件路径, sample: 样本文本, replacement: 替换文本'
+};
+let lastRegisterJson = '';
+let bots = {};
+let eventCollapsed = false;
+let selectedBotId = null;
+let nodes = [];
+let animId = null;
+let activeTaskFlows = null;
+let delegateMode = false;
+let currentTaskId = null;
+let taskPollTimer = null;
+let taskFlows = [];
+// 已移除对接模式
+const POS = {'agent/sayi_996':{x:150,y:200},'agent/sky_001':{x:450,y:200},'agent/skaye_sv':{x:300,y:80},'agent/eiar_001':{x:250,y:350},'agent/eiar_002':{x:500,y:350}};
+function groupClass(group) {
+    if (group === 'SaYi') return 'group-sayi';
+    if (group === 'Skaye') return 'group-skaye';
+    if (group === 'EiAr') return 'group-eiar';
+    return 'group-other';
+}
+function loadBots() {
+    return fetch('/api/register')
+        .then(res => res.json())
+        .then(data => {
+            console.log('注册数据:', data);
+            if (data.error) {
+                document.getElementById('empty-tip').textContent = '注册数据错误: ' + data.error;
+                return;
+            }
+            const json = JSON.stringify(data);
+            if (json !== lastRegisterJson) {
+                lastRegisterJson = json;
+                bots = data;
+                renderMap();
+            }
+        })
+        .catch(err => {
+            console.error('加载注册失败', err);
+            document.getElementById('empty-tip').textContent = '加载失败，请检查后端';
+        });
+}
+function renderMap() {
+    const map = document.getElementById('map');
+    const oldCanvas = document.getElementById('lines');
+    map.innerHTML = '';
+    if (oldCanvas) map.appendChild(oldCanvas);
+    else {
+        const canvas = document.createElement('canvas');
+        canvas.id = 'lines';
+        map.appendChild(canvas);
+    }
+    const keys = Object.keys(bots);
+    if (keys.length === 0) {
+        const tip = document.createElement('div');
+        tip.id = 'empty-tip';
+        tip.textContent = '暂无机器人注册';
+        map.appendChild(tip);
+        nodes = [];
+        selectedBotId = null;
+        return;
+    }
+    nodes = [];
+    keys.forEach(id => {
+        const bot = bots[id];
+        const pos = POS[id] || {x: Math.random()*600+100, y: Math.random()*400+100};
+        const node = document.createElement('div');
+        node.className = 'bot-node ' + groupClass(bot.group || 'other');
+        node.style.left = pos.x + 'px';
+        node.style.top = pos.y + 'px';
+        node.dataset.id = id;
+        node.onclick = () => selectBot(id, node);
+
+        const dot = document.createElement('div');
+        dot.className = 'dot';
+        node.appendChild(dot);
+
+        const name = document.createElement('div');
+        name.className = 'node-name';
+        name.textContent = (bot.name || id).split('/').pop();
+        node.appendChild(name);
+
+        if (bot.skills && Object.keys(bot.skills).length > 0) {
+            const toolCount = document.createElement('div');
+            toolCount.className = 'node-tools';
+            toolCount.textContent = Object.keys(bot.skills).length + ' 工具';
+            node.appendChild(toolCount);
+        }
+
+        map.appendChild(node);
+
+        nodes.push({
+            el: node,
+            id: id,
+            x: pos.x,
+            y: pos.y,
+            vx: (Math.random()*2 - 1) * 0.5,
+            vy: (Math.random()*2 - 1) * 0.5
+        });
+    });
+    if (!animId) {
+        animId = requestAnimationFrame(physicsStep);
+    }
+}
+function buildBotInfo(bot, id, includeExtras) {
+    let html = '<p><strong>ID:</strong> ' + (bot.bot_id || id) + '</p>';
+    html += '<p><strong>组:</strong> ' + (bot.group || '无') + '</p>';
+    html += '<p><strong>Peer:</strong> ' + (bot.peer || '无') + '</p>';
+    html += '<p><strong>秘钥:</strong> <span id="auth-key" data-key="' + (bot.auth_key || '') + '" data-shown="false">•••</span> <span style="cursor:pointer;" onclick="toggleKey(this)">👁</span></p>';
+    html += '<p><strong>MQTT:</strong> ' + ((bot.network && bot.network.url) ? bot.network.url + ':' + bot.network.port : '') + '</p>';
+    html += '<p><strong>Topic:</strong> ' + ((bot.network && bot.network.topic) ? bot.network.topic : '') + '</p>';
+    let lastHs = bot.last_handshake || '从未';
+    let lastHsClass = '';
+    if (bot.last_handshake) {
+        const t = new Date(bot.last_handshake.replace(' ', 'T')).getTime();
+        if (!isNaN(t) && Date.now() - t > 3600 * 1000) {
+            lastHsClass = ' style="color:#ef4444;"';
+        }
+    }
+    html += '<p id="last-active" data-bot-id="' + id + '" onclick="manualPing()" title="点击手动 ping 刷新" style="cursor:pointer;"><strong>上次激活:</strong><span' + lastHsClass + '>' + lastHs + '</span></p>';
+    if (includeExtras) {
+        const contacts = bot.contacts || [];
+        if (contacts.length > 0) {
+            html += '<h3>可联系机器人</h3><ul class="contact-list">';
+            contacts.forEach(cid => {
+                const cbot = bots[cid];
+                if (!cbot) return;
+                if (cbot.group === 'SV' || cid.toLowerCase().includes('sv')) return;
+                const cname = (cbot.name || cid).split('/').pop();
+                let color;
+                switch (cbot.group) {
+                    case 'SaYi': color = '#f8fafc'; break;
+                    case 'Skaye': color = '#3b82f6'; break;
+                    case 'EiAr': color = '#ef4444'; break;
+                    default: color = '#94a3b8';
+                }
+                html += '<li data-id="' + cid + '" onclick="event.stopPropagation();selectBotByCard(this.dataset.id)" style="cursor:pointer;color:' + color + ';">' + cname + '</li>';
+            });
+            html += '</ul>';
+        }
+        html += '<h3>工具列表</h3><ul class="tool-list">';
+        const tools = bot.skills || {};
+        if (Object.keys(tools).length === 0) html += '<li>无工具</li>';
+        else Object.keys(tools).forEach(k => {
+            const paramsHint = toolParams[k] ? ('参数: ' + toolParams[k]) : '无参数要求';
+            html += '<li title="' + paramsHint.replace(/&/g,'&amp;').replace(/"/g,'&quot;') + '">' + k + ' - ' + (tools[k].description || '') + '</li>';
+        });
+        html += '</ul>';
+
+    }
+    return html;
+}
+function selectBot(id, el) {
+    activeTaskFlows = null;
+    currentTaskId = null;
+    selectedBotId = id;
+    document.querySelectorAll('.bot-node').forEach(n => {
+        n.classList.remove('selected');
+        n.classList.remove('related');
+    });
+    el.classList.add('selected');
+    const bot = bots[id] || {};
+    document.getElementById('side-name').textContent = bot.name || id;
+    const img = document.getElementById('side-img');
+    const botInfo = bots[id] || {};
+    const imgFile = (botInfo.avatars && botInfo.avatars.length > 0) ? botInfo.avatars[0] : (id === 'agent/sayi_996' ? 'SaYi_996.png' : id === 'agent/skaye_996' ? 'Skaye_996.png' : '');
+    if (imgFile) img.src = '/api/static?bot_id=' + encodeURIComponent(id);
+    else img.src = '';
+
+    document.getElementById('side-info').innerHTML = buildBotInfo(bot, id, true);
+    document.getElementById('side-panel').classList.add('open');
+    const related = bot.related_bots || [];
+    related.forEach(rid => {
+        const target = document.querySelector('.bot-node[data-id="' + rid + '"]');
+        if (target) target.classList.add('related');
+    });
+    drawLines();
+}
+function selectBotByCard(id) {
+    const target = nodes.find(n => n.id === id);
+    if (target) selectBot(id, target.el);
+}
+
+
+
+function manualPing() {
+    const botId = selectedBotId;
+    if (!botId) return;
+    const lastActive = document.getElementById('last-active');
+    if (lastActive) {
+        lastActive.style.opacity = '0.5';
+        lastActive.style.pointerEvents = 'none';
+    }
+    fetch('/api/ping?bot_id=' + encodeURIComponent(botId))
+        .then(res => res.json())
+        .then(data => {
+            // 立即刷新一次，让用户看到当前状态
+            loadBots().then(() => {
+                const bot = bots[botId];
+                if (bot) {
+                    const node = nodes.find(n => n.id === botId);
+                    if (node) selectBot(botId, node.el);
+                }
+                if (lastActive) {
+                    lastActive.style.opacity = '1';
+                    lastActive.style.pointerEvents = 'auto';
+                }
+            });
+            // 1.5秒后再刷新一次，确保拿到 ping 回复后的握手时间更新
+            setTimeout(() => {
+                loadBots().then(() => {
+                    const bot = bots[botId];
+                    if (bot) {
+                        const node = nodes.find(n => n.id === botId);
+                        if (node) selectBot(botId, node.el);
+                    }
+                    if (lastActive) {
+                        lastActive.style.opacity = '1';
+                        lastActive.style.pointerEvents = 'auto';
+                    }
+                });
+            }, 1500);
+        })
+        .catch(err => {
+            console.error('ping 失败', err);
+            if (lastActive) {
+                lastActive.style.opacity = '1';
+                lastActive.style.pointerEvents = 'auto';
+            }
+        });
+}
+
+function toggleKey(el) {
+    const span = document.getElementById('auth-key');
+    if (!span) return;
+    if (span.dataset.shown === 'true') {
+        span.textContent = '•••';
+        span.dataset.shown = 'false';
+    } else {
+        span.textContent = span.dataset.key || '';
+        span.dataset.shown = 'true';
+    }
+}
+function closePanel() {
+    document.getElementById('side-panel').classList.remove('open');
+    selectedBotId = null;
+    currentTaskId = null;
+    activeTaskFlows = null;
+    document.querySelectorAll('.bot-node').forEach(n => {
+        n.classList.remove('selected');
+        n.classList.remove('related');
+    });
+    drawLines();
+}
+function toggleEvent() {
+    eventCollapsed = !eventCollapsed;
+    document.getElementById('event-body').classList.toggle('collapsed', eventCollapsed);
+    document.getElementById('event-header').innerHTML = '<span>实时事件</span><span style="color:#94a3b8;">' + (eventCollapsed ? '展开' : '折叠') + '</span>';
+}
+function updateStats() {
+    fetch('/api/stats')
+        .then(res => res.json())
+        .then(d => {
+            const el = document.getElementById('time');
+            el.textContent = new Date().toLocaleString() + ' | 事件:' + d.total + ' 成功:' + ((d.by_status && d.by_status.success) || 0) + ' 错误:' + ((d.by_status && d.by_status.error) || 0);
+        });
+}
+function updateEvents() {
+    if (eventCollapsed) return;
+    fetch('/api/events?limit=200')
+        .then(res => res.json())
+        .then(events => {
+            const groups = {};
+            events.forEach(ev => {
+                const tid = ev.task_id || 'unknown';
+                if (!groups[tid]) groups[tid] = [];
+                groups[tid].push(ev);
+            });
+            renderEventGroups(groups);
+            if (currentTaskId) {
+                showTaskGroupDetails(currentTaskId, groups[currentTaskId] || []);
+            }
+        });
+}
+
+function renderEventGroups(groups) {
+    const c = document.getElementById('event-body');
+    c.innerHTML = '';
+    const keys = Object.keys(groups).sort((a,b) => {
+        const ta = groups[a].reduce((m,e) => Math.max(m, e.timestamp || 0), 0);
+        const tb = groups[b].reduce((m,e) => Math.max(m, e.timestamp || 0), 0);
+        return tb - ta;
+    });
+    keys.forEach(tid => {
+        const evs = groups[tid];
+        const last = evs.reduce((m,e) => e.timestamp > m ? e.timestamp : m, 0);
+        const count = evs.length;
+        const srcEv = evs.find(e => e.source_bot);
+        const src = srcEv ? srcEv.source_bot : '';
+        const archived = evs.some(e => (e.message||'').includes('[ARCHIVE]'));
+        const statusLabel = archived ? 'ARCHIVED' : 'INPROCESS';
+        const statusClass = archived ? 'archived' : 'inprocess';
+        const isTracked = currentTaskId && tid === currentTaskId;
+        const div = document.createElement('div');
+        div.className = 'event-group' + (isTracked ? ' tracked' : '');
+        if (isTracked) {
+            div.style.border = '2px solid #8b5cf6';
+            div.style.boxShadow = '0 0 12px rgba(139,92,246,0.4)';
+        }
+        div.innerHTML = '<div class="event-group-title">' + (tid === 'unknown' ? '未关联任务' : tid) + (isTracked ? ' <span style="color:#10b981;">📌 追踪中</span>' : '') + ' <span class="task-status ' + statusClass + '">' + statusLabel + '</span></div>' +
+            '<div class="event-group-meta">' + (src ? src + ' · ' : '') + count + ' 条 · ' + new Date(last * 1000).toLocaleTimeString() + '</div>';
+        div.onclick = () => showTaskGroupDetails(tid, evs);
+        c.appendChild(div);
+    });
+}
+
+
+function showTaskGroupDetails(taskId, events) {
+    if (typeof window._summaryMode === 'undefined') window._summaryMode = false;
+    window._detailTaskId = taskId;
+    window._detailEvents = events;
+    if (currentTaskId && taskId !== currentTaskId) {
+        currentTaskId = null;
+    }
+    const sorted = events.slice().sort((a,b) => (a.timestamp||0) - (b.timestamp||0));
+    function getTime(ev) {
+        const m = (ev.message || '').match(/^\[([^\]]+)\]/);
+        return m ? m[1] : (ev.timestamp ? new Date(ev.timestamp*1000).toLocaleString() : ev.timestamp);
+    }
+    function getBot(ev) {
+        if (ev.source_bot) return ev.source_bot;
+        const m = (ev.message || '').match(/^\[[^\]]+\]\s*\[[^\]]+\]\s*\[([^\]]+)\]/);
+        return m ? m[1] : 'unknown';
+    }
+    let createEv = sorted.find(e => getAction(e.message || '') === 'created');
+    function getTarget(msg) {
+        const idx = msg.indexOf('到 ');
+        if (idx < 0) return '';
+        return msg.substring(idx+2).trim().split(/[，,\s]+/)[0];
+    }
+    function getAction(msg) {
+        if (msg.includes('任务创建 STATUS=CREATED')) return 'created';
+        if (msg.includes('发射新委托')) return 'delegated';
+        if (msg.includes('发射回传')) return 'returned';
+        return '';
+    }
+    if (!createEv) createEv = sorted[0];
+    const createTime = createEv ? getTime(createEv) : 'unknown';
+    const createBot = createEv ? getBot(createEv) : 'unknown';
+    let participants = [];
+    sorted.forEach(ev => {
+        const b = getBot(ev);
+        if (b && participants.indexOf(b) < 0) participants.push(b);
+    });
+    const lastEv = sorted[sorted.length - 1];
+    let currentBot = 'unknown';
+    if (lastEv) {
+        const act = getAction(lastEv.message || '');
+        if (act === 'delegated' || act === 'returned') {
+            currentBot = getTarget(lastEv.message || '') || getBot(lastEv);
+        } else {
+            currentBot = getBot(lastEv);
+        }
+    }
+    let flows = [];
+    sorted.forEach(ev => {
+        const msg = ev.message || '';
+        const act = getAction(msg);
+        if (act === 'delegated' || act === 'returned') {
+            const from = getBot(ev);
+            const to = getTarget(msg);
+            if (to && from) flows.push({from: from, to: to, type: act});
+        }
+    });
+    let html = '<div style="display:flex;gap:10px;margin-bottom:10px;">';
+    html += '<button onclick="toggleTaskSummaryMode(false)" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid #3b82f6;cursor:pointer;background:' + (window._summaryMode ? '#1e293b' : '#3b82f6') + ';color:' + (window._summaryMode ? '#94a3b8' : '#fff') + ';">详细</button>';
+    html += '<button onclick="toggleTaskSummaryMode(true)" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid #3b82f6;cursor:pointer;background:' + (window._summaryMode ? '#3b82f6' : '#1e293b') + ';color:' + (window._summaryMode ? '#fff' : '#94a3b8') + ';">摘要</button>';
+    html += '</div>';
+    html += '<div style="padding:1rem;background:#0f172a;border-radius:0.5rem;margin-bottom:1rem;">';
+    html += '<p><strong>任务ID:</strong> ' + taskId + '</p>';
+    html += '<p><strong>创建时间:</strong> ' + createTime + '</p>';
+    html += '<p><strong>创建BOT:</strong> ' + createBot + '</p>';
+    html += '<p><strong>当前持有:</strong> ' + currentBot + '</p>';
+    html += '<p><strong>参与BOT:</strong> ';
+    participants.forEach((p, i) => {
+        if (i > 0) html += ', ';
+        const pname = (bots[p] && bots[p].name ? bots[p].name.split('/').pop() : p.split('/').pop());
+        html += '<span class="participant-bot" data-id="' + p + '" onclick="event.stopPropagation();selectBotByCard(this.dataset.id)" style="cursor:pointer;color:#3b82f6;text-decoration:underline;">' + pname + '</span>';
+    });
+    html += '</p>';
+    if (flows.length) {
+        html += '<p><strong>流转记录:</strong></p><ul style="list-style:none;padding:0;">';
+        flows.forEach(f => {
+            const label = f.type === 'delegated' ? '委托' : '回传';
+            html += '<li style="font-size:0.8rem;color:#94a3b8;">' + f.from + ' ' + label + ' → ' + f.to + '</li>';
+        });
+        html += '</ul>';
+    }
+    html += '</div>';
+    html += '<div class="task-group-detail">';
+    sorted.forEach((ev, idx) => {
+        const currentBot = getBot(ev);
+        if (!window._summaryMode && idx > 0 && getBot(sorted[idx-1]) !== currentBot) {
+            html += '<div class="event-bot-divider">--- ' + currentBot + ' ---</div>';
+        }
+        const msg = stripLogPrefix(ev.message || '');
+        const statusMatch = msg.match(/状态转换\s*[:：]?\s*(.*?)\s*->\s*(.*)/);
+        const taskEndMatch = msg.match(/任务结束：【([\s\S]*?)】/);
+        const createMatch = msg.match(/任务创建 STATUS=CREATED\s*(.*)/);
+        if (window._summaryMode && !statusMatch && !taskEndMatch && !createMatch) {
+            return;
+        }
+        if (statusMatch) {
+            const newState = statusMatch[2];
+            html += '<div class="event-detail-item">' +
+                '<div class="event-detail-time">' + getTime(ev) + '</div>' +
+                '<div class="event-status-change">·TASK转换到' + newState + '状态</div>' +
+                '</div>';
+        } else if (taskEndMatch) {
+            html += '<div class="event-detail-item" style="background:rgba(16,185,129,0.15);border:1px solid #10b981;border-radius:6px;padding:0.5rem;margin-bottom:0.3rem;">' +
+                '<div class="event-detail-time">' + getTime(ev) + '</div>' +
+                '<div style="color:#10b981;font-weight:bold;">' + taskEndMatch[1] + '</div>' +
+                '</div>';
+        } else if (createMatch) {
+            html += '<div class="event-detail-item" style="background:rgba(245,158,11,0.15);border:1px solid #f59e0b;border-radius:6px;padding:0.5rem;margin-bottom:0.3rem;">' +
+                '<div class="event-detail-time">' + getTime(ev) + '</div>' +
+                '<div style="color:#f59e0b;font-weight:bold;">' + createMatch[1] + '</div>' +
+                '</div>';
+        } else {
+            html += '<div class="event-detail-item">' +
+                '<div class="event-detail-time">' + getTime(ev) + '</div>' +
+                '<div class="event-detail-msg">' + msg + '</div>' +
+                '</div>';
+        }
+    });
+    html += '</div>';
+    document.getElementById('side-name').textContent = taskId === 'unknown' ? '未关联任务' : '任务 ' + taskId;
+    const img = document.getElementById('side-img');
+    img.style.display = 'none';
+    document.getElementById('side-info').innerHTML = html;
+    document.getElementById('side-panel').classList.add('open');
+    activeTaskFlows = flows;
+}
+
+var chatRecords = [];
+function renderChatRecords() {
+    var list = document.getElementById('chat-record-list');
+    if (!list) return;
+    list.innerHTML = '';
+    chatRecords.forEach(function(rec) {
+        var row = document.createElement('div');
+        row.style.cssText = 'margin-bottom:0.6rem;display:flex;justify-content:' + (rec.type==='send' ? 'flex-end' : 'flex-start') + ';align-items:flex-end;';
+        var bubble = document.createElement('div');
+        bubble.style.cssText = 'max-width:75%;padding:0.4rem 0.8rem;border-radius:0.8rem;font-size:0.85rem;word-break:break-all;' + (rec.type==='send' ? 'background:#8b5cf6;color:#fff;' : 'background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#10b981;');
+        bubble.textContent = rec.text;
+        var timeSpan = document.createElement('span');
+        timeSpan.className = 'chat-record-time';
+        timeSpan.textContent = rec.time;
+        if (rec.type === 'send') {
+            row.appendChild(timeSpan);
+            row.appendChild(bubble);
+        } else {
+            row.appendChild(bubble);
+            row.appendChild(timeSpan);
+        }
+        list.appendChild(row);
+    });
+    var countEl = document.getElementById('chat-record-count');
+    if (countEl) countEl.textContent = chatRecords.length;
+}
+function stripLogPrefix(raw) {
+    if (!raw) return '';
+    const m = raw.match(/^(?:\[[^\]]*\]\s*){4}(.*)$/);
+    return m ? m[1] : raw;
+}
+
+function toggleTaskSummaryMode(mode) {
+    window._summaryMode = mode;
+    if (window._detailTaskId) {
+        showTaskGroupDetails(window._detailTaskId, window._detailEvents);
+    }
+}
+
+function formatChatTime(ts) {
+    try {
+        var d = new Date(ts * 1000);
+        return d.toLocaleTimeString('zh-CN', {hour12:false});
+    } catch(e) { return ''; }
+}
+function loadChatRecords() {
+    fetch('/api/events?limit=200')
+        .then(function(r) { return r.json(); })
+        .then(function(events) { events.forEach(addChatRecord); })
+        .catch(function(e) { console.error('loadChatRecords error', e); });
+}
+
+function addChatRecord(evt) {
+    try {
+        var msg = stripLogPrefix(evt.message || '');
+        var createMatch = msg.match(/任务创建 STATUS=CREATED(.*)/);
+        var endMatch = msg.match(/任务结束：【([\s\S]*?)】/);
+        if (createMatch) {
+            var source = (evt.source_bot || '').toLowerCase();
+            if (source === 'agent/sayi_sv') {
+                var raw = createMatch[1] || '';
+                var text = raw;
+                try {
+                    var pm = raw.match(/参数=(\{.*\})/);
+                    if (pm) {
+                        var params = JSON.parse(pm[1]);
+                        if (params && params.text !== undefined) text = String(params.text);
+                    }
+                } catch(e) {}
+                chatRecords.push({type:'send', text:text, time:formatChatTime(evt.timestamp)});
+                renderChatRecords();
+            }
+        } else if (endMatch) {
+            chatRecords.push({type:'recv', text:endMatch[1], time:formatChatTime(evt.timestamp)});
+            renderChatRecords();
+        }
+    } catch(e) { console.error('addChatRecord error', e); }
+}
+function isImportantEvent(ev) {
+    const msg = ev.message || '';
+    const importantKeywords = ['状态转换', '任务创建 STATUS=CREATED', 'started', '开始执行任务', '任务结束', '成功', '失败', 'ARCHIVE', '委托', '回传'];
+    return importantKeywords.some(k => msg.includes(k));
+}
+
+
+function isRectOverlap(r1, r2) {
+    return !(r1.x + r1.w < r2.x || r2.x + r2.w < r1.x || r1.y + r1.h < r2.y || r2.y + r2.h < r1.y);
+}
+function placeLabel(x, y, text, labelRects) {
+    const w = text.length * 7 + 6;
+    const h = 16;
+    const candidates = [
+        {x:x, y:y},
+        {x:x-20, y:y},
+        {x:x+20, y:y},
+        {x:x, y:y-20},
+        {x:x, y:y+20}
+    ];
+    for (let i = 0; i < candidates.length; i++) {
+        const rect = {x:candidates[i].x-w/2, y:candidates[i].y-h/2, w:w, h:h};
+        let ok = true;
+        for (let j = 0; j < labelRects.length; j++) {
+            if (isRectOverlap(rect, labelRects[j])) { ok = false; break; }
+        }
+        if (ok) { labelRects.push(rect); return {x:candidates[i].x, y:candidates[i].y}; }
+    }
+    console.warn('[drawLines] 标签重叠: ' + text);
+    const rect = {x:x-w/2, y:y-h/2, w:w, h:h};
+    labelRects.push(rect);
+    return {x:x, y:y};
+}
+
+function drawSelfLoop(ctx, x, y, label, strokeColor, fillColor, labelRects) {
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x, y - 12);
+    ctx.bezierCurveTo(x + 30, y - 30, x - 30, y - 30, x, y - 12);
+    ctx.stroke();
+    // 画箭头接近终点
+    ctx.fillStyle = fillColor;
+    ctx.beginPath();
+    ctx.moveTo(x, y - 12);
+    ctx.lineTo(x - 6, y - 4);
+    ctx.lineTo(x + 6, y - 4);
+    ctx.fill();
+    // 标序号
+    ctx.fillStyle = fillColor;
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const pos = placeLabel(x, y - 32, String(label), labelRects);
+    ctx.fillText(label, pos.x, pos.y);
+}
+
+function drawLine(ctx, x1, y1, x2, y2, color, pulseColor, lineWidth, speed) {
+    const now = performance.now() / speed % 1;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+    const px = x1 + (x2 - x1) * now;
+    const py = y1 + (y2 - y1) * now;
+    ctx.beginPath();
+    ctx.arc(px, py, 4, 0, Math.PI * 2);
+    ctx.fillStyle = pulseColor;
+    ctx.shadowColor = pulseColor;
+    ctx.shadowBlur = 8;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+}
+function renderEventGroups(groups) {
+    const c = document.getElementById('event-body');
+    c.innerHTML = '';
+    const keys = Object.keys(groups).sort((a,b) => {
+        const ta = groups[a].reduce((m,e) => Math.max(m, e.timestamp || 0), 0);
+        const tb = groups[b].reduce((m,e) => Math.max(m, e.timestamp || 0), 0);
+        return tb - ta;
+    });
+    keys.forEach(tid => {
+        const evs = groups[tid];
+        const last = evs.reduce((m,e) => e.timestamp > m ? e.timestamp : m, 0);
+        const count = evs.length;
+        const srcEv = evs.find(e => e.source_bot);
+        const src = srcEv ? srcEv.source_bot : '';
+        const archived = evs.some(e => (e.message||'').includes('[ARCHIVE]'));
+        const statusLabel = archived ? 'ARCHIVED' : 'INPROCESS';
+        const statusClass = archived ? 'archived' : 'inprocess';
+        const isTracked = currentTaskId && tid === currentTaskId;
+        const div = document.createElement('div');
+        div.className = 'event-group' + (isTracked ? ' tracked' : '');
+        if (isTracked) {
+            div.style.border = '2px solid #8b5cf6';
+            div.style.boxShadow = '0 0 12px rgba(139,92,246,0.4)';
+        }
+        div.innerHTML = '<div class="event-group-title">' + (tid === 'unknown' ? '未关联任务' : tid) + (isTracked ? ' <span style="color:#10b981;">📌 追踪中</span>' : '') + ' <span class="task-status ' + statusClass + '">' + statusLabel + '</span></div>' +
+            '<div class="event-group-meta">' + (src ? src + ' · ' : '') + count + ' 条 · ' + new Date(last * 1000).toLocaleTimeString() + '</div>';
+        div.onclick = () => showTaskGroupDetails(tid, evs);
+        c.appendChild(div);
+    });
+}
+
+function drawLines() {
+    const labelRects = [];
+    const canvas = document.getElementById('lines');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // 绘制任务流转连线（委托蓝色、回传绿色）
+    if (activeTaskFlows && activeTaskFlows.length) {
+        activeTaskFlows.forEach((f, idx) => {
+            try {
+            const label = idx + 1;
+            const isDelegate = f.type === 'delegated';
+            const strokeColor = isDelegate ? 'rgba(59,130,246,0.8)' : 'rgba(16,185,129,0.8)';
+            const fillColor = isDelegate ? '#3b82f6' : '#10b981';
+            const fromIsSV = f.from === 'agent/skaye_sv' || f.from === 'agent/skaye_SV';
+            const toIsSV = f.to === 'agent/skaye_sv' || f.to === 'agent/skaye_SV';
+            const svNode = nodes.find(n => n.id && n.id.toLowerCase() === 'agent/skaye_sv');
+            const fromNode = nodes.find(n => n.id && n.id.toLowerCase() === String(f.from || '').toLowerCase());
+            const toNode = nodes.find(n => n.id && n.id.toLowerCase() === String(f.to || '').toLowerCase());
+            if (fromIsSV && toIsSV) {
+                if (svNode) drawSelfLoop(ctx, svNode.x, svNode.y, label, strokeColor, fillColor, labelRects);
+                return;
+            }
+            if (fromIsSV || toIsSV) {
+                let anchor = fromIsSV ? toNode : fromNode;
+                if (!anchor) anchor = svNode;
+                if (!anchor) { console.warn('[drawLines] 找不到SV节点', f.from, f.to); return; }
+                drawSelfLoop(ctx, anchor.x, anchor.y, label, strokeColor, fillColor, labelRects);
+            } else {
+                if (!fromNode || !toNode) return;
+                const midX = (fromNode.x + toNode.x) / 2;
+                const midY = (fromNode.y + toNode.y) / 2;
+                const dx = toNode.x - fromNode.x;
+                const dy = toNode.y - fromNode.y;
+                const len = Math.sqrt(dx * dx + dy * dy) || 1;
+                const bend = 30;
+                const sign = fromNode.id < toNode.id ? 1 : -1;
+                const cx = midX - bend;
+                const cy = midY + sign * 15;
+                ctx.strokeStyle = strokeColor;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(fromNode.x, fromNode.y);
+                ctx.quadraticCurveTo(cx, cy, toNode.x, toNode.y);
+                ctx.stroke();
+                ctx.fillStyle = fillColor;
+                ctx.font = 'bold 12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const pos = placeLabel(cx, cy - 12, String(label), labelRects);
+                ctx.fillText(label, pos.x, pos.y);
+            }
+            } catch(err) {
+                console.error('[drawLines] 绘制连线失败', f, err);
+            }
+        });
+    }
+    if (!selectedBotId || !nodes.length) return;
+    const sel = nodes.find(n => n.id === selectedBotId);
+    if (!sel) return;
+    const bot = bots[selectedBotId];
+    const related = (bot && bot.related_bots) || [];
+    related.forEach(rid => {
+        const target = nodes.find(n => n.id === rid);
+        if (!target) return;
+        drawLine(ctx, sel.x, sel.y, target.x, target.y, 'rgba(148,163,184,0.4)', '#f59e0b', 1, 1500);
+    });
+    const peerId = bot && bot.peer;
+    if (peerId) {
+        const target = nodes.find(n => n.id === peerId);
+        if (target) {
+            drawLine(ctx, sel.x, sel.y, target.x, target.y, 'rgba(168,85,247,0.7)', '#a855f7', 2.5, 800);
+        }
+    }
+    const contacts = (bot && bot.contacts) || [];
+    contacts.forEach(cid => {
+        if (cid === peerId) return;
+        const target = nodes.find(n => n.id === cid);
+        if (!target) return;
+        drawLine(ctx, sel.x, sel.y, target.x, target.y, 'rgba(249,115,22,0.8)', '#f97316', 1.5, 1200);
+    });
+}
+function physicsStep() {
+    const map = document.getElementById('map');
+    const canvas = document.getElementById('lines');
+    if (canvas) {
+        if (canvas.width !== map.clientWidth) canvas.width = map.clientWidth;
+        if (canvas.height !== map.clientHeight) canvas.height = map.clientHeight;
+    }
+    const W = map.clientWidth;
+    const H = map.clientHeight;
+    const margin = 30;
+    for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        n.vx += (Math.random() - 0.5) * 0.15;
+        n.vy += (Math.random() - 0.5) * 0.15;
+        for (let j = i + 1; j < nodes.length; j++) {
+            const m = nodes[j];
+            const dx = m.x - n.x;
+            const dy = m.y - n.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist > 0 && dist < 120) {
+                const force = 0.8 / (dist * dist + 1);
+                const fx = dx / dist * force;
+                const fy = dy / dist * force;
+                n.vx -= fx;
+                n.vy -= fy;
+                m.vx += fx;
+                m.vy += fy;
+            }
+        }
+        n.vx *= 0.98;
+        n.vy *= 0.98;
+        n.x += n.vx;
+        n.y += n.vy;
+        if (n.x < margin) { n.x = margin; n.vx = Math.abs(n.vx); }
+        if (n.x > W - margin) { n.x = W - margin; n.vx = -Math.abs(n.vx); }
+        if (n.y < margin) { n.y = margin; n.vy = Math.abs(n.vy); }
+        if (n.y > H - margin) { n.y = H - margin; n.vy = -Math.abs(n.vy); }
+        n.el.style.left = n.x + 'px';
+        n.el.style.top = n.y + 'px';
+    }
+    drawLines();
+    animId = requestAnimationFrame(physicsStep);
+}
+function refresh() {
+    updateStats();
+    updateEvents();
+}
+
+// 建立 SSE 连接：事件驱动刷新
+function connectEventStream() {
+    const es = new EventSource('/api/events/stream');
+    es.onmessage = function(e) {
+        try {
+            var sseEvt = JSON.parse(e.data);
+            addChatRecord(sseEvt);
+            const evt = JSON.parse(e.data);
+            // 收到事件后刷新事件面板和注册数据
+            updateEvents();
+            if (evt && evt.type === 'register_updated') {
+                loadBots();
+            } else if (evt && evt.type === 'ping_updated') {
+                loadBots();
+            } else {
+                // 其他事件也可能导致注册数据变化，为保险也刷新（但频率会受限制）
+                // 暂时只刷新事件和统计，不频繁拉注册
+            }
+            updateStats();
+        } catch (err) {
+            console.error('处理SSE事件失败', err);
+        }
+    };
+    es.onerror = function() {
+        console.error('SSE连接断开，尝试重连...');
+        // 浏览器会自动重连，无需额外处理
+    };
+}
+generateStars();
+initDelegateMode();
+setInterval(refresh, 2000);
+loadBots();
+refresh();
+loadChatRecords();
+
+// 独立大屏：不依赖 SSE，改为定期轮询注册数据
+// 改为监听 SSE 事件驱动刷新，移除自动轮询
+connectEventStream();
+</script>
+</body>
+</html>

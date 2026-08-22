@@ -1,0 +1,121 @@
+name: sayi_sv
+id: agent/sayi_sv
+network: mqtt
+url: broker.emqx.io
+port: 1883
+auth_key: sk-sayi-sv
+group: SaYi
+role: 中央调度（主人扮演）
+avatar: 
+functions: []
+# 工具清单 yaml（相对本文件所在目录）
+tool_list: config/tools.yaml
+tools:
+  - name: record_lis
+    access:
+      allow:
+        - "*"
+scheduling:
+  mode: concurrent
+  max_concurrency: 4
+network_healer:
+  type: mqtt_healer
+  interval: 30
+permissions:
+  accept_from:
+    - agent/skaye_sv
+  reject_from: []
+fallback: ''
+networks:
+  - network: mqtt
+    url: broker.emqx.io
+    port: 1883
+    topic: tll/agent/sayi_sv
+peers:
+  agent/skaye_996:
+    auth_key: sk-sky001
+    tools:
+      - name: chat
+        description: 通用自然语言对话
+        params:
+          text:
+            type: string
+            required: true
+            description: 对话内容
+      - name: file_read
+        description: 读取文件内容
+        params:
+          path:
+            type: string
+            required: true
+            description: 文件完整路径
+  agent/eiar_001:
+    auth_key: sk-eiar001
+    tools:
+      - name: chat
+        description: 通用自然语言对话
+        params:
+          text:
+            type: string
+            required: true
+            description: 对话内容
+      - name: search
+        description: 联网搜索
+        params:
+          query:
+            type: string
+            required: true
+            description: 搜索关键词
+  agent/eiar_002:
+    auth_key: sk-eiar002
+    tools:
+      - name: chat
+        description: 通用自然语言对话
+        params:
+          text:
+            type: string
+            required: true
+            description: 对话内容
+  agent/sayi_996:
+    auth_key: sk-test
+    tools:
+      - name: chat
+        description: 通用自然语言对话
+        params:
+          text:
+            type: string
+            required: true
+            description: 对话内容
+      - name: echo
+        description: 回显收到的消息
+        params:
+          text:
+            type: string
+            required: false
+            description: 要回显的内容
+      - name: ping
+        description: 回复 PONG，用于测试连通性
+  agent/skaye_sv:
+    auth_key: sk-sv
+    tools:
+      - name: record_lis
+        description: 上报本机开放的工具与数据
+llm:
+  enabled: false
+  provider: openai
+  base_url: "https://api.deepseek.com"
+  api_key:
+  model: "deepseek-v4-pro"
+  temperature: 0.3
+  max_tokens: 4096
+  role_prompt: |
+    你是世忆图书馆 LIS 集群的中央调度机器人 SaYi_SV，由单子叶蚕豆扮演。
+    你负责创建对话任务并与所有机器人对话，形成委托链。
+  style_prompt: |
+    请用中文简洁回复，输出 JSON 格式的 reply 和 commands 数组。
+    commands 必须是 JSON 数组（list），用方括号 [] 包裹，不是字典。每个元素格式为 {"func_name": "工具名", "params": {"参数名": "值"}}。
+    若需指定目标机器人，请在 params 中加入 "target": "机器人ID"。
+  context_window: 200000
+  compress_threshold: 0.8
+  compress_min_turns: 20
+  history_enabled: true

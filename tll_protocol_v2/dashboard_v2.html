@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>LIS系统监控大屏</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Microsoft YaHei',sans-serif; color:#e2e8f0; background:#060913; overflow:hidden; }
+header { position:relative; z-index:5; background:rgba(30,41,59,0.85); padding:12px 20px; display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #8b5cf6; }
+h1 { font-size:18px; color:#c4b5fd; }
+#time { color:#94a3b8; font-size:13px; }
+#map { position:relative; height:calc(100vh - 52px); overflow:hidden; background:radial-gradient(ellipse at center,#0b0f1a 0%,#060913 100%); }
+#stars { position:absolute; top:0; left:0; width:100%; height:100%; z-index:0; }
+.star { position:absolute; background:#fff; border-radius:50%; opacity:.7; }
+#lines { position:absolute; top:0; left:0; z-index:1; pointer-events:none; }
+.bot-node { position:absolute; display:flex; flex-direction:column; align-items:center; cursor:pointer; z-index:3; transform:translate(-50%,-50%); transition:transform .2s; }
+.bot-node:hover { transform:translate(-50%,-50%) scale(1.25); }
+.bot-node .dot { width:14px; height:14px; border-radius:50%; margin-bottom:3px; border:2px solid rgba(0,0,0,.3); }
+.bot-node .node-name { font-size:11px; color:#e2e8f0; text-shadow:0 0 4px rgba(0,0,0,.9); }
+.bot-node .node-tools { font-size:9px; color:#94a3b8; }
+.bot-node.group-sayi .dot { background:#f8fafc; box-shadow:0 0 10px 2px rgba(255,255,255,.7); }
+.bot-node.group-skaye .dot { background:#3b82f6; box-shadow:0 0 10px 2px rgba(59,130,246,.7); }
+.bot-node.group-eiar .dot { background:#ef4444; box-shadow:0 0 10px 2px rgba(239,68,68,.7); }
+.bot-node.group-other .dot { background:#94a3b8; box-shadow:0 0 8px 2px rgba(148,163,184,.6); }
+.bot-node.active .dot { outline:2px solid #f59e0b; }
+.bot-node.selected .dot { outline:2px solid #8b5cf6; box-shadow:0 0 14px 3px rgba(139,92,246,.7); }
+#side { position:fixed; top:52px; right:-480px; width:480px; height:calc(100% - 52px); background:rgba(30,41,59,.97); transition:right .35s; z-index:100; box-shadow:-5px 0 15px rgba(0,0,0,.4); overflow-y:auto; }
+#side.open { right:0; }
+#log-panel { position:fixed; top:52px; left:-560px; width:560px; height:calc(100% - 52px); background:rgba(15,23,42,.98); transition:left .35s; z-index:110; box-shadow:5px 0 18px rgba(0,0,0,.5); overflow-y:auto; border-right:1px solid #8b5cf6; }
+#log-panel.open { left:0; }
+#log-body { padding:12px 14px; font-size:12px; }
+.lp-tid { color:#7ee787; font-family:Consolas,monospace; word-break:break-all; margin-bottom:6px; font-size:13px; }
+.lp-meta { color:#94a3b8; margin-bottom:8px; }
+.lp-hop { margin:5px 0; color:#cbd5e1; }
+.lp-hop .arrow { color:#a855f7; margin:0 6px; }
+.lp-sec { color:#94a3b8; margin:10px 0 6px; font-size:12px; }
+.lp-tool { padding:7px 9px; margin:5px 0; background:#1e293b; border-radius:6px; border-left:2px solid #3b82f6; }
+.lp-tool .tname { color:#7ee787; }
+.lp-tool .targs { color:#94a3b8; font-family:Consolas,monospace; display:block; margin-top:3px; word-break:break-all; }
+.lp-tool .tres { color:#79c0ff; font-family:Consolas,monospace; display:block; margin-top:3px; word-break:break-all; max-height:120px; overflow-y:auto; white-space:pre-wrap; }
+.lp-bot { display:inline-block; padding:0 6px; border-radius:6px; background:#a855f733; color:#d8b4fe; font-size:10px; margin-right:4px; }
+.lp-result { color:#e2e8f0; background:#1e293b; border:1px solid #10b981; border-radius:6px; padding:8px 10px; margin:4px 0 8px; white-space:pre-wrap; word-break:break-all; max-height:200px; overflow-y:auto; font-size:12px; }
+.side-hdr { display:flex; justify-content:space-between; padding:12px; border-bottom:1px solid #334155; position:sticky; top:0; background:rgba(30,41,59,.98); z-index:5; }
+.side-hdr h3 { color:#c4b5fd; font-size:14px; }
+.close-btn { background:none; border:none; color:#94a3b8; font-size:18px; cursor:pointer; }
+.task-item { padding:10px 12px; border-bottom:1px solid #1e293b; cursor:pointer; }
+.task-item:hover { background:#1e293b; }
+.task-item .cmd { font-size:12px; color:#7ee787; font-family:Consolas,monospace; }
+.task-item .chain { font-size:11px; color:#94a3b8; margin-top:3px; word-break:break-all; }
+.task-item .meta { font-size:11px; color:#64748b; margin-top:3px; }
+.task-item.sel { border-left:3px solid #8b5cf6; background:#1e293b; }
+#chain-detail { padding:12px; }
+.hop { display:flex; align-items:center; margin:6px 0; font-size:12px; }
+.hop .arrow { color:#a855f7; margin:0 8px; }
+.hop .from { color:#c4b5fd; }
+.hop .to { color:#f59e0b; }
+.hop.delegate .arrow { color:#3b82f6; }
+.hop.return .arrow { color:#10b981; }
+#task-list { border-top:1px solid #334155; }
+#empty-tip { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#64748b; }
+#task-flyout { position:absolute; right:20px; bottom:60px; width:400px; max-height:60%; background:rgba(15,23,42,.95); border:1px solid #8b5cf6; border-radius:10px; display:none; flex-direction:column; z-index:10; box-shadow:0 0 20px rgba(139,92,246,.3); }
+#task-flyout.open { display:flex; }
+.flyout-hdr { display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border-bottom:1px solid #334155; color:#c4b5fd; font-size:13px; }
+.flyout-hdr .close-btn { background:none; border:none; color:#94a3b8; font-size:16px; cursor:pointer; }
+#flyout-body { overflow-y:auto; padding:10px 12px; font-size:12px; }
+.fl-tid { color:#7ee787; font-family:Consolas,monospace; word-break:break-all; margin-bottom:6px; }
+.fl-meta { color:#94a3b8; margin-bottom:8px; }
+.fl-hop { margin:4px 0; color:#cbd5e1; }
+.fl-hop .arrow { color:#a855f7; margin:0 6px; }
+.fl-tool { padding:6px 8px; margin:4px 0; background:#1e293b; border-radius:6px; border-left:2px solid #3b82f6; }
+.fl-tool .tname { color:#7ee787; }
+.fl-tool .targs { color:#94a3b8; font-family:Consolas,monospace; display:block; margin-top:2px; word-break:break-all; }
+.fl-tool .tres { color:#79c0ff; font-family:Consolas,monospace; display:block; margin-top:2px; word-break:break-all; max-height:80px; overflow:hidden; }
+#legend { position:absolute; bottom:12px; left:12px; z-index:4; font-size:11px; color:#94a3b8; background:rgba(15,23,42,.7); padding:6px 10px; border-radius:6px; }
+#legend span { display:inline-block; width:12px; height:12px; border-radius:50%; margin:0 4px -2px 8px; }
+#chatbar { position:absolute; bottom:50px; left:50%; transform:translateX(-50%); z-index:6; display:flex; align-items:center; gap:8px; background:rgba(15,23,42,.95); border:1px solid #8b5cf6; border-radius:8px; padding:8px 12px; box-shadow:0 0 15px rgba(139,92,246,.3); }
+#chat-target { font-size:12px; color:#94a3b8; white-space:nowrap; }
+#chat-target .ct-bot { color:#7ee787; }
+#chat-input { width:320px; background:#1e293b; border:1px solid #334155; color:#e2e8f0; border-radius:6px; padding:7px 10px; font-size:13px; outline:none; }
+#chat-input:focus { border-color:#8b5cf6; }
+#chat-send { background:#8b5cf6; color:#fff; border:none; border-radius:6px; padding:7px 16px; cursor:pointer; font-size:13px; }
+#chat-send:hover { background:#a78bfa; }
+#bot-detail { padding:12px; border-bottom:1px solid #334155; }
+.bd-row { font-size:12px; color:#cbd5e1; margin:4px 0; }
+.bd-row .k { color:#94a3b8; }
+.bd-row .v { color:#e2e8f0; }
+.bd-tag { display:inline-block; padding:1px 8px; border-radius:8px; font-size:11px; margin:2px 4px 2px 0; background:#1e293b; color:#7ee787; }
+.bd-tag .tp { color:#94a3b8; font-size:10px; }
+.bd-peer { display:inline-block; padding:2px 8px; border-radius:8px; font-size:11px; margin:2px 4px 2px 0; background:#1f6feb22; color:#79c0ff; border:1px solid #1f6feb55; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🕸️ LIS系统大屏</h1>
+  <span id="time">加载中...</span>
+</header>
+<div id="map">
+  <div id="stars"></div>
+  <canvas id="lines"></canvas>
+  <div id="empty-tip">暂无机器人</div>
+  <div id="legend">点击任务动态绘制委托链：<span style="background:#3b82f6"></span>委托 <span style="background:#10b981"></span>回传 <span style="background:#f59e0b"></span>留档上报</div>
+  <div id="chatbar">
+    <span id="chat-target">以 SaYi_SV 名义 @ <b class="ct-bot">未选择</b></span>
+    <input id="chat-input" type="text" placeholder="输入消息，发送 chat 委托..." />
+    <button id="chat-send" onclick="sendChat()">发送</button>
+  </div>
+</div>
+
+<div id="side">
+  <div class="side-hdr"><h3 id="side-title">节点详情 / 任务委托链</h3><button class="close-btn" onclick="closeSide()">✕</button></div>
+  <div id="bot-detail"></div>
+  <div id="chain-detail"></div>
+  <div id="task-list"></div>
+</div>
+
+<div id="log-panel">
+  <div class="side-hdr"><h3 id="log-title">📋 任务日志</h3><button class="close-btn" onclick="closeLogPanel()">✕</button></div>
+  <div id="log-body"></div>
+</div>
+
+<script>
+let bots = {};          // id -> bot info
+let nodes = [];         // {id,x,y,vx,vy,el}
+let animId = null;
+let activeFlows = [];   // 当前展示的委托链 [{from,to,type}]
+let selectedTask = null;
+let selectedBotId = null;
+let chatTarget = '';    // 对话框目标机器人（点击节点设置）
+
+// 布局：按地图宽高百分比分散放置（六边形分布，充分拉开间距）
+function layoutPos(id, W, H){
+  const frac = {
+    'agent/skaye_sv':  {x:0.50,  y:0.12},
+    'agent/sayi_sv':   {x:0.26,  y:0.18},
+    'agent/sayi_996':  {x:0.40,  y:0.08},
+    'agent/skaye_996': {x:0.72,  y:0.16},
+    'agent/eiar_001':  {x:0.32,  y:0.62},
+    'agent/eiar_002':  {x:0.74,  y:0.66},
+    'agent/sayi_sv2':  {x:0.28,  y:0.35},
+  };
+  const f = frac[id];
+  if(f) return {x:f.x*W, y:f.y*H};
+  // 未预设：在下方中间随机散开
+  return {x:0.30*W+Math.random()*0.40*W, y:0.55*H+Math.random()*0.35*H};
+}
+
+function groupClass(g){ return g==='SaYi'?'group-sayi':g==='Skaye'?'group-skaye':g==='EiAr'?'group-eiar':'group-other'; }
+
+async function loadBots(){
+  try {
+    const data = await (await fetch('/api/robots')).json();
+    // 节点集合没变则保留现有布局（已收敛的节点位置不动），只更新名字/工具数等
+    const newKeys = Object.keys(data||{}).sort().join(',');
+    const oldKeys = Object.keys(bots).sort().join(',');
+    const layoutChanged = (newKeys!==oldKeys) || (Object.keys(bots).length===0);
+    bots = data || {};
+    if(layoutChanged) renderMap();
+    else { // 只更新节点上的工具数量等，不重建（保持收敛位置）
+      Object.entries(bots).forEach(([id, bot])=>{
+        const el=document.querySelector('.bot-node[data-id="'+id+'"]');
+        if(el){
+          const tc=(bot.tools&&bot.tools.length)?bot.tools.length:(Object.keys(bot.skills||{}).length);
+          const tn=el.querySelector('.node-tools'); if(tn) tn.textContent=tc;
+        }
+      });
+    }
+  } catch(e){ document.getElementById('empty-tip').textContent='加载失败'; }
+}
+
+function renderMap(){
+  const map = document.getElementById('map');
+  const keys = Object.keys(bots);
+  // 复用已有 canvas
+  let canvas = document.getElementById('lines');
+  if(!canvas){ canvas=document.createElement('canvas'); canvas.id='lines'; map.appendChild(canvas); }
+  canvas.width = map.clientWidth; canvas.height = map.clientHeight;
+  canvas.style.width = map.clientWidth+'px'; canvas.style.height = map.clientHeight+'px';
+  // 移除旧节点
+  document.querySelectorAll('.bot-node').forEach(n=>n.remove());
+  nodes = [];
+  const W = map.clientWidth, H = map.clientHeight;
+  keys.forEach(id=>{
+    const bot = bots[id]||{};
+    const pos = layoutPos(id, W, H);
+    const node = document.createElement('div');
+    node.className='bot-node '+groupClass(bot.group||'other');
+    node.style.left=pos.x+'px'; node.style.top=pos.y+'px';
+    node.dataset.id=id;
+    node.onclick=()=>selectBot(id, node);
+    const toolCount = (bot.tools&&bot.tools.length)?bot.tools.length:(Object.keys(bot.skills||{}).length);
+    node.innerHTML='<div class="dot"></div><div class="node-name">'+(bot.name||id.split('/').pop())+'</div><div class="node-tools">'+toolCount+'</div>';
+    map.appendChild(node);
+    nodes.push({id, el:node, x:pos.x, y:pos.y, vx:0, vy:0});
+  });
+  if(keys.length) document.getElementById('empty-tip').style.display='none';
+  animId=requestAnimationFrame(physicsStep);
+}
+
+function physicsStep(){
+  const mapEl=document.getElementById('map');
+  const c=document.getElementById('lines');
+  if(c && mapEl){
+    c.width=mapEl.clientWidth;
+    c.height=mapEl.clientHeight;
+    c.style.width=mapEl.clientWidth+'px';
+    c.style.height=mapEl.clientHeight+'px';
+  }
+  const W=mapEl?mapEl.clientWidth:800, H=mapEl?mapEl.clientHeight:600;
+  // 简单的布朗运动：节点在中间区域轻微浮动，去掉复杂的引力/斥力系统。
+  // 用软边界把节点限制在中央地带（避开左右面板），碰到边界就轻微弹回。
+  const box = { x0: W*0.20, y0: H*0.08, x1: W*0.80, y1: H*0.80 };
+  for(const n of nodes){
+    n.vx+=(Math.random()-0.5)*0.18; n.vy+=(Math.random()-0.5)*0.18;
+    n.vx*=0.90; n.vy*=0.90;
+    n.x+=n.vx; n.y+=n.vy;
+    // 软边界：超出中央活动框就柔和弹回
+    if(n.x<box.x0){ n.x=box.x0; n.vx=Math.abs(n.vx)*0.5; }
+    if(n.x>box.x1){ n.x=box.x1; n.vx=-Math.abs(n.vx)*0.5; }
+    if(n.y<box.y0){ n.y=box.y0; n.vy=Math.abs(n.vy)*0.5; }
+    if(n.y>box.y1){ n.y=box.y1; n.vy=-Math.abs(n.vy)*0.5; }
+    n.el.style.left=n.x+'px'; n.el.style.top=n.y+'px';
+  }
+  drawLines();
+  animId=requestAnimationFrame(physicsStep);
+}
+
+// 标签避开算法：围绕中心 (x,y) 偏移，直到与已占用标签矩形不重叠。
+// rects: 已占用的标签矩形数组 [{x,y,w,h}]。w/h 为标签宽高。
+function placeLabel(x, y, rects, w, h){
+  const r = (cx,cy)=>({x:cx-w/2, y:cy-h/2, w:w, h:h});
+  const overlaps = (r1, r2)=> !(r1.x+r1.w<r2.x || r2.x+r2.w<r1.x || r1.y+r1.h<r2.y || r2.y+r2.h<r1.y);
+  const clash = (cx,cy)=> rects.some(rect=> overlaps(r(cx,cy), rect));
+  // 候选：中心 + 上/下/左/右 + 斜向，逐圈扩大
+  const cands = [[0,0],[0,-h],[0,h],[-w,0],[w,0],[-w,-h],[w,-h],[-w,h],[w,h],
+                 [0,-2*h],[0,2*h],[-2*w,0],[2*w,0]];
+  for(const [dx,dy] of cands){
+    const cx=x+dx, cy=y+dy;
+    if(!clash(cx,cy)){ rects.push(r(cx,cy)); return {x:cx, y:cy}; }
+  }
+  // 全冲突就强塞（避免死循环）
+  rects.push(r(x,y)); return {x:x, y:y};
+}
+
+// ---- 委托链绘制（动画）----
+function drawLines(){
+  const canvas=document.getElementById('lines');
+  if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // 选中节点 → 画它与 peers 连线（搭档=紫，其他联系=红）
+  if(selectedBotId){
+    const sel=nodes.find(n=>n.id===selectedBotId);
+    const selBot=bots[selectedBotId]||{};
+    if(sel){
+      const partner=selBot.peer||'';
+      const peers=Array.isArray(selBot.peers)?selBot.peers:(typeof selBot.peers==='object'?Object.keys(selBot.peers):[]);
+      peers.forEach(pid=>{
+        const pn=nodes.find(n=>n.id===pid);
+        if(!pn) return;
+        const isPartner = pid===partner;
+        ctx.strokeStyle=isPartner?'rgba(168,85,247,0.7)':'rgba(239,68,68,0.5)';
+        ctx.lineWidth=isPartner?2:1;
+        ctx.setLineDash(isPartner?[]:[5,4]);
+        ctx.beginPath(); ctx.moveTo(sel.x,sel.y); ctx.lineTo(pn.x,pn.y); ctx.stroke();
+        ctx.setLineDash([]);
+      });
+      sel.el.classList.add('active');
+    }
+  }
+
+  if(!activeFlows.length) return;
+  // 序号标签避开算法：追踪已占用的标签矩形，避免数字重叠
+  const labelRects = [];
+  activeFlows.forEach((f,idx)=>{
+    const fromNode=nodes.find(n=>n.id===f.from);
+    const toNode=nodes.find(n=>n.id===f.to);
+    if(!fromNode||!toNode) return;
+    const isDel=f.type==='delegated';
+    const isArch=f.type==='archive';
+    const color=isArch?'rgba(245,158,11,0.9)':(isDel?'rgba(59,130,246,0.8)':'rgba(16,185,129,0.8)');
+    const pulse=isArch?'#f59e0b':(isDel?'#3b82f6':'#10b981');
+    // 曲线
+    const midX=(fromNode.x+toNode.x)/2, midY=(fromNode.y+toNode.y)/2;
+    ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath();
+    ctx.moveTo(fromNode.x,fromNode.y);
+    ctx.quadraticCurveTo(midX,midY-20,toNode.x,toNode.y);
+    ctx.stroke();
+    // 序号（避开重叠：围绕中点偏移放置）
+    const lp = placeLabel(midX, midY-28, labelRects, 18, 14);
+    ctx.fillStyle=pulse; ctx.font='bold 11px sans-serif'; ctx.textAlign='center';
+    ctx.fillText(String(idx+1), lp.x, lp.y);
+    // 流动光点
+    const now=(performance.now()/ (800+idx*300))%1;
+    const px=fromNode.x+(toNode.x-fromNode.x)*now;
+    const py=fromNode.y+(toNode.y-fromNode.y)*now;
+    ctx.beginPath(); ctx.arc(px,py,4,0,Math.PI*2);
+    ctx.fillStyle=pulse; ctx.shadowColor=pulse; ctx.shadowBlur=10; ctx.fill(); ctx.shadowBlur=0;
+    // 高亮节点
+    fromNode.el.classList.add('active'); toNode.el.classList.add('active');
+  });
+}
+
+// ---- 解析 trace → 委托链 flows（完整追踪链：委托 + 逐跳回传）----
+function traceToFlows(task){
+  const flows=[];
+  const trace=task.trace||[];
+  if(trace.length){
+    // 委托链：逐跳 delegate（真实记录）
+    const nodes2=[];
+    trace.forEach(h=>{
+      const bot=h.bot||'';
+      const dm=/delegate_to_(.+)/.exec(h.action||'');
+      const rm=/return_to_(.+)/.exec(h.action||'');
+      if(dm){
+        // 发往 skaye_sv 的委托视为"留档上报"（task_archive 汇聚），用独立类型标记
+        const type = (dm[1]==='agent/skaye_sv') ? 'archive' : 'delegated';
+        flows.push({from:bot, to:dm[1], type:type}); if(nodes2.indexOf(bot)<0)nodes2.push(bot); if(nodes2.indexOf(dm[1])<0)nodes2.push(dm[1]);
+      }
+      else if(rm){ flows.push({from:bot, to:rm[1], type:'returned'}); if(nodes2.indexOf(bot)<0)nodes2.push(bot); if(nodes2.indexOf(rm[1])<0)nodes2.push(rm[1]); }
+      else if(bot && nodes2.indexOf(bot)<0) nodes2.push(bot);
+    });
+    // 若没有真实的 return_to hop（旧数据），则推测回传链
+    const hasReturn = flows.some(f=>f.type==='returned');
+    if(!hasReturn){
+      for(let i=nodes2.length-1;i>0;i--){
+        flows.push({from:nodes2[i], to:nodes2[i-1], type:'returned'});
+      }
+    }
+  } else if(task.from_bot){
+    flows.push({from:task.from_bot, to:task.bot||'', type:'delegated'});
+    if(task.bot) flows.push({from:task.bot, to:task.from_bot, type:'returned'});
+  }
+  return flows;
+}
+
+async function loadTasks(){
+  try {
+    const tasks = await (await fetch('/api/tasks?limit=30')).json();
+    const list = document.getElementById('task-list');
+    list.innerHTML = '<div style="padding:10px;color:#64748b;font-size:12px;">最近任务（点击查看委托链）</div>' +
+      (tasks||[]).map(t=>{
+        const chain=traceToFlows(t).map(f=>f.from.split('/').pop()+'→'+f.to.split('/').pop()).join(' ');
+        return `<div class="task-item ${selectedTask===t.task_id?'sel':''}" data-id="${t.task_id}" onclick="selectTask('${t.task_id}')">
+          <div class="cmd">${t.command||''}</div>
+          <div class="chain">${chain||'—'}</div>
+          <div class="meta">${t.status||''} · ${(t.archived_at||'').slice(11,19)}</div></div>`;
+      }).join('');
+    // 默认选中第一个
+    if(tasks&&tasks.length&&!selectedTask) selectTask(tasks[0].task_id);
+  } catch(e){}
+}
+
+function selectBot(id, el){
+  selectedBotId = id;
+  // 对话框目标跟随：点击节点 = 选择对话机器人（SV 无 LLM，不可对话）
+  const isSV = /_sv$/.test(id);
+  if(isSV){
+    chatTarget = '';
+    const tEl=document.querySelector('#chat-target .ct-bot');
+    if(tEl) tEl.textContent = '(SV 无 LLM，不可对话)';
+  } else {
+    chatTarget = id;
+    const tEl=document.querySelector('#chat-target .ct-bot');
+    if(tEl) tEl.textContent = (bots[id]&&bots[id].name)||id.split('/').pop();
+  }
+  activeFlows = [];
+  // 清理旧选中/高亮
+  document.querySelectorAll('.bot-node').forEach(n=>n.classList.remove('selected'));
+  document.querySelectorAll('.bot-node').forEach(n=>n.classList.remove('active'));
+  if(el) el.classList.add('selected');
+  const bot = bots[id]||{};
+  // 基本信息
+  const peers=Array.isArray(bot.peers)?bot.peers:(typeof bot.peers==='object'?Object.keys(bot.peers):[]);
+  const partner=bot.peer||'';
+  const tools = bot.tools||[];
+  const skills = bot.skills||{};
+  const toolNames = tools.length? tools : Object.keys(skills);
+  const groupColor = bot.group==='SaYi'?'#f8fafc':bot.group==='Skaye'?'#3b82f6':bot.group==='EiAr'?'#ef4444':'#94a3b8';
+  let html = '<div class="bd-row"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:'+groupColor+';margin-right:6px;"></span><b>'+esc(bot.name||id)+'</b></div>';
+  html += '<div class="bd-row"><span class="k">ID:</span> <span class="v">'+esc(id)+'</span></div>';
+  html += '<div class="bd-row"><span class="k">组:</span> <span class="v">'+esc(bot.group||'—')+'</span></div>';
+  if(bot.role) html += '<div class="bd-row"><span class="k">角色:</span> <span class="v">'+esc(bot.role)+'</span></div>';
+  html += '<div class="bd-row" style="cursor:pointer;" title="点击触发定点 ping 更新握手时间" onclick="manualPing()"><span class="k">上次握手:</span> <span class="v">'+esc(bot.last_handshake||'从未')+' <span style="color:#8b5cf6;">↻</span></span></div>';
+  html += '<div class="bd-row"><span class="k">工具('+(toolNames.length||0)+'):</span></div>';
+  html += '<div class="bd-row">'+(toolNames.length? toolNames.map(t=>{
+    const meta = skills[t]||{};
+    const params = meta.params||{};
+    const pstr = Object.keys(params).length? ' <span class="tp">('+esc(Object.keys(params).join(', '))+')</span>' : '';
+    return '<span class="bd-tag" title="'+esc(meta.description||'')+'">'+esc(t)+pstr+'</span>';
+  }).join('') : '<span class="v">无</span>')+'</div>';
+  html += '<div class="bd-row"><span class="k">可联系('+(peers.length||0)+'):</span> '+(peers.length? peers.map(p=>{
+    const isPartner=p===partner;
+    const pbot=bots[p]||{};
+    const pcolor=pbot.group==='SaYi'?'#f8fafc':pbot.group==='Skaye'?'#3b82f6':pbot.group==='EiAr'?'#ef4444':'#94a3b8';
+    // 搭档：紫色底+星标；其他：按组配色边框
+    if(isPartner){
+      return '<span class="bd-peer" style="background:#a855f733;border-color:#a855f7;color:#d8b4fe;">⭐'+esc(p.split("/").pop())+'</span>';
+    }
+    return '<span class="bd-peer" style="border-color:'+pcolor+';color:'+pcolor+';">'+esc(p.split("/").pop())+'</span>';
+  }).join('') : '<span class="v">孤岛</span>')+'</div>';
+  document.getElementById('bot-detail').innerHTML = html;
+  document.getElementById('side-title').textContent = '节点详情';
+  document.getElementById('chain-detail').style.display='none';
+  document.getElementById('side').classList.add('open');
+  drawLines();
+}
+
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function selectTask(taskId){
+  selectedTask=taskId;
+  selectedBotId=null;
+  document.querySelectorAll('.bot-node').forEach(n=>n.classList.remove('selected'));
+  document.querySelectorAll('.bot-node').forEach(n=>n.classList.remove('active'));
+  try{
+    const res=await (await fetch('/api/task?task_id='+encodeURIComponent(taskId))).json();
+    const t=res.data||{};
+    activeFlows=traceToFlows(t);
+    renderTaskFlyout(t);
+    document.getElementById('log-panel').classList.add('open');
+    loadTasks();
+  }catch(e){}
+}
+
+function renderTaskFlyout(t){
+  const body=document.getElementById('log-body');
+  const flows=traceToFlows(t);
+  const hops=flows.map(f=>`<div class="lp-hop"><span>${esc(f.from.split('/').pop())}</span><span class="arrow">${f.type==='delegated'?'→':'←'}</span><span>${esc(f.to.split('/').pop())}</span></div>`).join('');
+  // 工具调用日志（聚合委托链所有 bot，按 bot 标注来源）
+  const logs=(t.logs||[]).map(l=>{
+    const botTag = l.bot ? '<span class="lp-bot">'+esc(l.bot.split('/').pop())+'</span> ' : '';
+    if(l.event==='tool.call') return `<div class="lp-tool">${botTag}<span class="tname">🔧 ${esc(l.tool)}</span><span class="targs">${esc(l.args||'')}</span></div>`;
+    if(l.event==='tool.result') return `<div class="lp-tool">${botTag}<span class="tname">✔ ${esc(l.tool)}</span><span class="tres">${esc(String(l.result||'').slice(0,500))}</span></div>`;
+    if(l.tool) return `<div class="lp-tool">${botTag}<span class="tname">🔧 ${esc(l.tool)}</span><span class="targs">${esc(JSON.stringify(l.params||l.args||''))}</span><span class="tres">${esc(String(l.result||'').slice(0,500))}</span></div>`;
+    return '';
+  }).join('');
+  body.innerHTML =
+    '<div class="lp-tid">'+esc(t.task_id||'')+'</div>'+
+    '<div class="lp-meta">'+esc(t.command||'')+' · '+esc(t.status||'')+(t.bot?' · '+esc(t.bot.split('/').pop()):'')+'</div>'+
+    (t.result?'<div class="lp-sec">💬 对话/执行结果</div><div class="lp-result">'+esc(String(t.result))+ '</div>':'')+
+    (hops?'<div class="lp-sec">委托链</div>'+hops:'')+
+    (logs?'<div class="lp-sec">📋 工具调用日志</div>'+logs:'<div class="lp-meta">暂无工具调用</div>');
+  document.getElementById('log-title').textContent='📋 任务日志';
+}
+
+function closeLogPanel(){ document.getElementById('log-panel').classList.remove('open'); }
+
+function toggleSide(){ document.getElementById('side').classList.toggle('open'); }
+function closeSide(){ document.getElementById('side').classList.remove('open'); }
+
+function tick(){ document.getElementById('time').textContent='更新于 '+new Date().toLocaleTimeString(); }
+
+// 背景星星
+function generateStars(){
+  const container = document.getElementById('stars');
+  if(!container) return;
+  container.innerHTML='';
+  for(let i=0;i<180;i++){
+    const s=document.createElement('div');
+    s.className='star';
+    s.style.left=(Math.random()*100)+'%';
+    s.style.top=(Math.random()*100)+'%';
+    const size=(Math.random()*2+1)+'px';
+    s.style.width=size; s.style.height=size;
+    s.style.opacity=(Math.random()*0.5+0.3);
+    container.appendChild(s);
+  }
+}
+
+async function init(){
+  generateStars();
+  await loadBots();
+  await loadTasks();
+  tick();
+  setInterval(async()=>{ await loadBots(); await loadTasks(); tick(); },5000);
+}
+
+// 定点 ping：点击握手时间触发，更新该 bot 握手时间
+async function manualPing(){
+  const id = selectedBotId;
+  if(!id){ alert('请先点击一个机器人节点'); return; }
+  try{
+    const r = await fetch('/api/ping?bot_id='+encodeURIComponent(id));
+    const data = await r.json();
+    if(data.status==='success'){
+      // 等 bot 回传握手更新，稍后刷新
+      setTimeout(async()=>{ await loadBots(); if(selectedBotId){ const n=nodes.find(x=>x.id===selectedBotId); if(n) selectBot(selectedBotId, n.el); } }, 1500);
+    } else {
+      alert('ping 失败: '+(data.info||JSON.stringify(data)));
+    }
+  }catch(e){ alert('网络错误: '+e); }
+}
+
+// ---- 对话框：以 SaYi_SV 名义发 chat 委托 ----
+async function sendChat(){
+  const target = chatTarget;
+  if(!target){ alert('请先点击图上的机器人节点选择对话对象'); return; }
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if(!text){ return; }
+  input.value='';
+  try{
+    const resp = await fetch('/api/send', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({to:target, command:'chat', params:{text:text}})
+    });
+    const data = await resp.json();
+    if(data.status==='success'){
+      alert('已发送 → '+target.split('/').pop()+' : '+text);
+      loadTasks();  // 刷新任务列表
+    } else {
+      alert('发送失败: '+(data.info||JSON.stringify(data)));
+    }
+  }catch(e){
+    alert('网络错误: '+e);
+  }
+}
+// Enter 发送
+document.addEventListener('DOMContentLoaded', ()=>{
+  const inp=document.getElementById('chat-input');
+  if(inp) inp.addEventListener('keydown', e=>{ if(e.key==='Enter') sendChat(); });
+});
+
+init();
+</script>
+</body>
+</html>
